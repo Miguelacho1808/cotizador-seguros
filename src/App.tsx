@@ -7,6 +7,10 @@ import Login from "./pages/Login";
 import Inicio from "./pages/Inicio";
 import Aseguradoras from "./pages/Aseguradoras";
 import Tarifario from "./pages/Tarifario";
+import AseguradoraDetalle from "./pages/AseguradoraDetalle";
+import PlanEditor from "./pages/PlanEditor";
+import Usuarios from "./pages/Usuarios";
+import Configuracion from "./pages/Configuracion";
 
 function Centro({ children }: { children: ReactNode }) {
   return (
@@ -61,7 +65,11 @@ export default function App() {
           <Route element={<Protegido />}>
             <Route path="/" element={<Inicio />} />
             <Route path="/aseguradoras" element={<Aseguradoras />} />
+            <Route path="/aseguradoras/:id" element={<AseguradoraDetalle />} />
+            <Route path="/planes/:id" element={<PlanEditor />} />
             <Route path="/tarifario" element={<Tarifario />} />
+            <Route path="/usuarios" element={<Usuarios />} />
+            <Route path="/configuracion" element={<Configuracion />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -35,9 +35,17 @@ export default function Layout({ children }: { children: ReactNode }) {
             Aseguradoras
           </NavLink>
           {esAdmin && (
-            <NavLink to="/tarifario" className={clase}>
-              Tarifario
-            </NavLink>
+            <>
+              <NavLink to="/tarifario" className={clase}>
+                Tarifario
+              </NavLink>
+              <NavLink to="/usuarios" className={clase}>
+                Usuarios
+              </NavLink>
+              <NavLink to="/configuracion" className={clase}>
+                Configuración
+              </NavLink>
+            </>
           )}
         </nav>
 

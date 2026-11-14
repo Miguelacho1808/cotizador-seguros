@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../lib/auth";
 
 type Plan = { id: string; nombre: string; tipo: string; activo: boolean };
 type Aseguradora = { id: string; nombre: string; ciudad: string | null; activa: boolean; planes: Plan[] };
@@ -7,8 +9,11 @@ type Aseguradora = { id: string; nombre: string; ciudad: string | null; activa: 
 const TIPO: Record<string, string> = { hcm: "HCM", emca: "Emergencia médica", amy: "Adulto mayor" };
 
 export default function Aseguradoras() {
+  const { perfil } = useAuth();
+  const navigate = useNavigate();
   const [lista, setLista] = useState<Aseguradora[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const esAdmin = perfil?.rol === "admin";
 
   useEffect(() => {
     supabase
@@ -21,9 +26,27 @@ export default function Aseguradoras() {
       });
   }, []);
 
+  const nueva = async () => {
+    const nombre = window.prompt("Nombre de la nueva aseguradora");
+    if (!nombre || !nombre.trim()) return;
+    const r = await supabase.from("aseguradoras").insert({ nombre: nombre.trim() }).select("id").single();
+    if (r.error) setError(r.error.message);
+    else navigate(`/aseguradoras/${(r.data as { id: string }).id}`);
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Aseguradoras</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-3xl font-bold">Aseguradoras</h1>
+        {esAdmin && (
+          <button
+            onClick={nueva}
+            className="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+          >
+            + Nueva aseguradora
+          </button>
+        )}
+      </div>
       {error && <p className="text-red-400">{error}</p>}
       {lista && lista.length === 0 && (
         <p className="text-zinc-400">Aún no hay aseguradoras. Importa el tarifario desde la sección Tarifario.</p>
@@ -31,16 +54,29 @@ export default function Aseguradoras() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {lista?.map((a) => (
           <div key={a.id} className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-            <div>
-              <p className="text-lg font-semibold">{a.nombre}</p>
-              <p className="text-xs text-zinc-500">
-                {a.ciudad ?? "Sin ciudad"} · {a.activa ? "Activa" : "Inactiva"}
-              </p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-lg font-semibold">{a.nombre}</p>
+                <p className="text-xs text-zinc-500">
+                  {a.ciudad ?? "Sin ciudad"} · {a.activa ? "Activa" : "Inactiva"}
+                </p>
+              </div>
+              {esAdmin && (
+                <Link to={`/aseguradoras/${a.id}`} className="text-sm text-indigo-300 hover:underline">
+                  Editar
+                </Link>
+              )}
             </div>
             <ul className="space-y-1 text-sm">
               {a.planes.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-2">
-                  <span>{p.nombre}</span>
+                  {esAdmin ? (
+                    <Link to={`/planes/${p.id}`} className="hover:text-indigo-300 hover:underline">
+                      {p.nombre}
+                    </Link>
+                  ) : (
+                    <span>{p.nombre}</span>
+                  )}
                   <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs text-indigo-300">
                     {TIPO[p.tipo] ?? p.tipo}
                   </span>
