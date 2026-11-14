@@ -10,6 +10,7 @@ type FilaTarifa = {
   edad_max: number;
   prima_base: number;
   deducible: number;
+  tamano_grupo: number;
   planes: { nombre: string; tipo: string; aseguradoras: { nombre: string } | null } | null;
 };
 
@@ -29,7 +30,7 @@ export default function Tarifario() {
     const res = await supabase
       .from("tarifas")
       .select(
-        "id,cobertura_monto,edad_min,edad_max,prima_base,deducible,planes(nombre,tipo,aseguradoras(nombre))",
+        "id,cobertura_monto,edad_min,edad_max,prima_base,deducible,tamano_grupo,planes(nombre,tipo,aseguradoras(nombre))",
         { count: "exact" },
       )
       .order("cobertura_monto")
@@ -138,6 +139,7 @@ export default function Tarifario() {
                   <td className="px-3 py-2">{dinero(f.cobertura_monto)}</td>
                   <td className="px-3 py-2">
                     {f.edad_min}–{f.edad_max}
+                    {f.tamano_grupo > 0 && ` · grupo de ${f.tamano_grupo}`}
                   </td>
                   <td className="px-3 py-2">{dinero(f.prima_base)}</td>
                   <td className="px-3 py-2">{dinero(f.deducible)}</td>

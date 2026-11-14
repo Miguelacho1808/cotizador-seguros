@@ -22,6 +22,7 @@ type Valida = {
   emax: number;
   prima: number;
   ded: number;
+  tam: number;
   addons: Record<string, string>;
 };
 
@@ -72,6 +73,8 @@ export async function importarTarifario(
     const emax = num(f.edad_max);
     const prima = num(f.prima_base);
     const ded = num(f.deducible) ?? 0;
+    // Opcional: número de personas del grupo (planes con tarifa por grupo). 0 = tarifa por persona.
+    const tam = num(f.tamano_grupo) ?? 0;
 
     if (
       !aseg ||
@@ -83,7 +86,9 @@ export async function importarTarifario(
       emax === null ||
       emin > emax ||
       prima === null ||
-      prima < 0
+      prima < 0 ||
+      !Number.isInteger(tam) ||
+      tam < 0
     ) {
       omitidas.push(`Línea ${linea}: datos inválidos o incompletos`);
       return;
@@ -95,16 +100,34 @@ export async function importarTarifario(
         addons[columna.slice("addon_".length).trim()] = valor.trim();
       }
     }
-    validas.push({ aseg, plan, tipo, monto, emin, emax, prima, ded, addons });
+    validas.push({ aseg, plan, tipo, monto, emin, emax, prima, ded, tam, addons });
   });
 
-  // Duplicados dentro del archivo: se queda la última fila
-  const porClave = new Map<string, Valida>();
+  // Claves repetidas: si las filas son idénticas se colapsan en una. Si traen precios o add-ons
+  // distintos no se adivina cuál es el correcto: se omite el grupo y se informa, para no pisar datos buenos.
+  const grupos = new Map<string, Valida[]>();
   for (const v of validas) {
-    porClave.set(`${v.aseg}|${v.plan}|${v.monto}|${v.emin}|${v.emax}|${v.ded}`, v);
+    const clave = `${v.aseg}|${v.plan}|${v.monto}|${v.emin}|${v.emax}|${v.ded}|${v.tam}`;
+    grupos.set(clave, [...(grupos.get(clave) ?? []), v]);
   }
-  const unicas = [...porClave.values()];
-  const duplicadas = validas.length - unicas.length;
+  const firma = (v: Valida) => JSON.stringify([v.prima, Object.entries(v.addons).sort()]);
+  const unicas: Valida[] = [];
+  let duplicadas = 0;
+  const conflictosPorPlan = new Map<string, number>();
+  for (const filasGrupo of grupos.values()) {
+    if (new Set(filasGrupo.map(firma)).size === 1) {
+      unicas.push(filasGrupo[0]);
+      duplicadas += filasGrupo.length - 1;
+    } else {
+      const k = `${filasGrupo[0].aseg} / ${filasGrupo[0].plan}`;
+      conflictosPorPlan.set(k, (conflictosPorPlan.get(k) ?? 0) + 1);
+    }
+  }
+  for (const [plan, n] of conflictosPorPlan) {
+    omitidas.push(
+      `${plan}: ${n} combinaciones repetidas con precios distintos; se omitieron y no se modificó nada. Agrega una columna tamano_grupo al CSV para distinguirlas.`,
+    );
+  }
 
   // 1. Aseguradoras
   progreso("Guardando aseguradoras…");
@@ -148,6 +171,7 @@ export async function importarTarifario(
           edad_max: v.emax,
           prima_base: v.prima,
           deducible: v.ded,
+          tamano_grupo: v.tam,
         },
       },
     ];
@@ -161,13 +185,13 @@ export async function importarTarifario(
       .from("tarifas")
       .upsert(
         lotesTarifa[i].map((x) => x.fila),
-        { onConflict: "plan_id,cobertura_monto,edad_min,edad_max,deducible" },
+        { onConflict: "plan_id,cobertura_monto,edad_min,edad_max,deducible,tamano_grupo" },
       )
-      .select("id,plan_id,cobertura_monto,edad_min,edad_max,deducible");
+      .select("id,plan_id,cobertura_monto,edad_min,edad_max,deducible,tamano_grupo");
     falla("Tarifas", res.error);
     for (const t of res.data ?? []) {
       idTarifa.set(
-        `${t.plan_id}|${Number(t.cobertura_monto)}|${t.edad_min}|${t.edad_max}|${Number(t.deducible)}`,
+        `${t.plan_id}|${Number(t.cobertura_monto)}|${t.edad_min}|${t.edad_max}|${Number(t.deducible)}|${t.tamano_grupo}`,
         t.id as string,
       );
     }
@@ -190,7 +214,7 @@ export async function importarTarifario(
 
   for (const { origen, fila } of filasTarifa) {
     const tarifaId = idTarifa.get(
-      `${fila.plan_id}|${fila.cobertura_monto}|${fila.edad_min}|${fila.edad_max}|${fila.deducible}`,
+      `${fila.plan_id}|${fila.cobertura_monto}|${fila.edad_min}|${fila.edad_max}|${fila.deducible}|${fila.tamano_grupo}`,
     );
     if (!tarifaId) continue;
     for (const [nombre, valor] of Object.entries(origen.addons)) {

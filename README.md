@@ -28,6 +28,10 @@ where id = (select id from auth.users where email = 'TU_CORREO');
 
 Entra como administrador → Tarifario → sube el CSV. Convención de add-ons: número = costo anual, `gratis` = incluido, vacío = no disponible. La importación es repetible (actualiza, no duplica).
 
+### Planes con tarifa por grupo
+
+Algunos planes (p. ej. Hispana, Salud Familiar) cobran la **prima del grupo completo** según el número de personas (3 a 6). En el CSV se distinguen con una columna opcional `tamano_grupo`; si no existe, vale 0 (tarifa por persona). Si el CSV trae filas con la misma clave pero precios distintos y sin `tamano_grupo`, el importador **no adivina**: omite esas filas, lo informa y no toca lo que ya está guardado.
+
 ## Desarrollo local
 
 ```bash
