@@ -210,7 +210,7 @@ export default function AseguradoraDetalle() {
         </div>
 
         <div className="flex flex-wrap items-end gap-3">
-          <div className="w-64">
+          <div className="w-full sm:w-64">
             <Campo etiqueta="Nuevo plan">
               <input
                 value={nuevoNombre}
@@ -220,7 +220,7 @@ export default function AseguradoraDetalle() {
               />
             </Campo>
           </div>
-          <div className="w-48">
+          <div className="w-full sm:w-48">
             <Campo etiqueta="Tipo">
               <select value={nuevoTipo} onChange={(e) => setNuevoTipo(e.target.value)} className={inputCls}>
                 {TIPOS.map(([v, n]) => (

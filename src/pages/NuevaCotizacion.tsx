@@ -824,7 +824,7 @@ export default function NuevaCotizacion() {
             </p>
           )}
 
-          <div className="sticky bottom-0 flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/95 p-3 backdrop-blur">
+          <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/95 p-3 backdrop-blur">
             <Boton variante="secundario" onClick={() => setPaso(3)}>
               ← Volver
             </Boton>

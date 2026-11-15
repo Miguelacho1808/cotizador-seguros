@@ -67,7 +67,7 @@ export default function Cotizaciones() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Buscar por cliente o número…"
-          className="w-72 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+          className="w-full rounded-lg sm:w-72  border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm outline-none focus:border-indigo-400"
         />
         <select
           value={estado}
