@@ -9,6 +9,7 @@ export type Perfil = {
   username: string | null;
   rol: "admin" | "asesor";
   activo: boolean;
+  avatar_url: string | null;
 };
 
 type AuthCtx = {
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     supabase
       .from("perfiles")
-      .select("id,nombre,apellido,username,rol,activo")
+      .select("id,nombre,apellido,username,rol,activo,avatar_url")
       .eq("id", userId)
       .maybeSingle()
       .then(({ data }) => {

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import Avatar from "./Avatar";
 
 const clase = ({ isActive }: { isActive: boolean }) =>
   `block rounded-lg px-3 py-2 text-sm ${
@@ -47,10 +48,13 @@ export default function Layout({ children }: { children: ReactNode }) {
         }`}
       >
         <div className="mb-6 flex items-start justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Bienvenido</p>
-            <p className="text-lg font-semibold">{nombre}</p>
-            <p className="text-xs text-zinc-500">{esAdmin ? "Administrador" : "Asesor"}</p>
+          <div className="flex items-center gap-3">
+            <Avatar url={perfil?.avatar_url ?? null} nombre={nombre} tam="h-12 w-12 text-base" />
+            <div>
+              <p className="text-xs text-zinc-500">Hola de nuevo,</p>
+              <p className="text-lg font-semibold leading-tight">{perfil?.nombre || nombre}</p>
+              <p className="text-xs text-zinc-500">{esAdmin ? "Administrador" : "Asesor"}</p>
+            </div>
           </div>
           <button
             onClick={() => setAbierto(false)}
