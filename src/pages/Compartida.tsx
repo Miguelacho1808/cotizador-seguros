@@ -89,7 +89,7 @@ export default function Compartida() {
 
   return (
     <div className="min-h-screen bg-slate-100 pb-24 text-slate-900 print:min-h-0 print:bg-white print:pb-0" style={{ colorScheme: "light" }}>
-      <div className="mx-auto max-w-xl">
+      <div className="mx-auto max-w-xl print:max-w-none">
         <header className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-5 text-white print:hidden">
           <div className="flex h-14 w-24 items-center justify-center rounded-lg bg-white p-1.5">
             {datos.organizacion?.logo_url ? (

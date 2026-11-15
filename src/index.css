@@ -15,7 +15,7 @@ body {
 /* Impresión / PDF de cotizaciones */
 @page {
   size: A4;
-  margin: 10mm;
+  margin: 0;
 }
 @media print {
   body {

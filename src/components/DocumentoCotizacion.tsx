@@ -168,7 +168,7 @@ export default function DocumentoCotizacion({ d }: { d: DatosDoc }) {
   beneficios.sort((a, b) => (orden.indexOf(a) + 1 || 999) - (orden.indexOf(b) + 1 || 999));
 
   return (
-    <div className="hoja mx-auto w-full max-w-[860px] space-y-4 bg-white p-5 text-zinc-800 print:max-w-none print:space-y-3 print:p-0">
+    <div className="hoja mx-auto w-full max-w-[860px] space-y-4 bg-white p-5 text-zinc-800 print:max-w-none print:space-y-3 print:p-[10mm]">
       <div className="flex flex-wrap items-end justify-between gap-2 border-b-2 pb-2" style={{ borderColor: AZUL }}>
         <div>
           <p className="text-lg font-bold" style={{ color: AZUL }}>

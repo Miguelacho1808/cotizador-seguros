@@ -127,7 +127,7 @@ export default function CotizacionDetalle() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="mx-auto max-w-5xl space-y-5 print:max-w-none print:space-y-0">
       <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
         <div>
           <Link to="/cotizaciones" className="text-sm text-zinc-400 hover:text-zinc-100">
