@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 
 type Plan = { id: string; nombre: string; tipo: string; activo: boolean };
-type Aseguradora = { id: string; nombre: string; ciudad: string | null; activa: boolean; planes: Plan[] };
+type Aseguradora = { id: string; nombre: string; logo_url: string | null; ciudad: string | null; activa: boolean; planes: Plan[] };
 
 const TIPO: Record<string, string> = { hcm: "HCM", emca: "Emergencia médica", amy: "Adulto mayor" };
 
@@ -18,7 +18,7 @@ export default function Aseguradoras() {
   useEffect(() => {
     supabase
       .from("aseguradoras")
-      .select("id,nombre,ciudad,activa,planes(id,nombre,tipo,activo)")
+      .select("id,nombre,logo_url,ciudad,activa,planes(id,nombre,tipo,activo)")
       .order("nombre")
       .then(({ data, error }) => {
         if (error) setError(error.message);
@@ -54,6 +54,11 @@ export default function Aseguradoras() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {lista?.map((a) => (
           <div key={a.id} className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+            {a.logo_url && (
+              <div className="flex h-16 items-center justify-center rounded-lg bg-white p-2">
+                <img src={a.logo_url} alt={a.nombre} className="max-h-full max-w-full object-contain" />
+              </div>
+            )}
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-lg font-semibold">{a.nombre}</p>

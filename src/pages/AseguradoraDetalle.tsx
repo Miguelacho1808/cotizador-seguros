@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
+import SubirLogo from "../components/SubirLogo";
 import { Aviso, Boton, Campo, Casilla, Seccion, inputCls, numero, type Mensaje } from "../components/ui";
 
 const CUOTAS: [string, string][] = [
@@ -58,6 +59,7 @@ export default function AseguradoraDetalle() {
   const navigate = useNavigate();
   const [f, setF] = useState<Record<string, string> | null>(null);
   const [cuotas, setCuotas] = useState<string[]>([]);
+  const [logo, setLogo] = useState<string | null>(null);
   const [activa, setActiva] = useState(true);
   const [renov, setRenov] = useState(false);
   const [planes, setPlanes] = useState<Plan[]>([]);
@@ -86,6 +88,7 @@ export default function AseguradoraDetalle() {
     for (const k of [...TEXTO, ...NUMEROS]) valores[k] = s(k);
     setF(valores);
     setCuotas((r.cuotas as string[]) ?? []);
+    setLogo((r.logo_url as string | null) ?? null);
     setActiva(Boolean(r.activa));
     setRenov(Boolean(r.renovacion_habilitada));
     setPlanes((p.data as unknown as Plan[]) ?? []);
@@ -231,6 +234,18 @@ export default function AseguradoraDetalle() {
           <Boton onClick={crearPlan}>Crear plan</Boton>
         </div>
         <Aviso mensaje={msgPlan} />
+      </Seccion>
+
+      <Seccion titulo="Logo" ayuda="Se muestra en las tarjetas, en la cotización y en el PDF. Se guarda al subirlo.">
+        <SubirLogo
+          url={logo}
+          carpeta={`aseguradoras/${id}`}
+          onCambio={async (url) => {
+            const r = await supabase.from("aseguradoras").update({ logo_url: url }).eq("id", id!);
+            if (!r.error) setLogo(url);
+            return r.error ? r.error.message : null;
+          }}
+        />
       </Seccion>
 
       <Seccion titulo="Datos de la aseguradora">

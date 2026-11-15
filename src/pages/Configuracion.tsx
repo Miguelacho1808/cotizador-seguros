@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
+import SubirLogo from "../components/SubirLogo";
 import { Aviso, Boton, Campo, Seccion, inputCls, type Mensaje } from "../components/ui";
 
 const CAMPOS: [string, string][] = [
@@ -15,11 +16,12 @@ export default function Configuracion() {
   const { perfil } = useAuth();
   const [f, setF] = useState<Record<string, string> | null>(null);
   const [msg, setMsg] = useState<Mensaje | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
       .from("organizacion")
-      .select("nombre,rif,licencia,telefono,direccion")
+      .select("nombre,rif,licencia,telefono,direccion,logo_url")
       .limit(1)
       .single()
       .then(({ data, error }) => {
@@ -28,6 +30,7 @@ export default function Configuracion() {
           return;
         }
         const r = data as Record<string, string | null>;
+        setLogo(r.logo_url ?? null);
         setF(Object.fromEntries(CAMPOS.map(([k]) => [k, r[k] ?? ""])));
       });
   }, []);
@@ -56,7 +59,7 @@ export default function Configuracion() {
       <h1 className="text-3xl font-bold">Configuración</h1>
       <Seccion
         titulo="Datos de la empresa"
-        ayuda="Aparecen en las cotizaciones compartidas y en los PDF. La subida del logo llega en una próxima entrega."
+        ayuda="Aparecen en las cotizaciones compartidas y en los PDF."
       >
         <div className="grid gap-3 md:grid-cols-2">
           {CAMPOS.map(([k, etiqueta]) => (
@@ -69,6 +72,18 @@ export default function Configuracion() {
           <Boton onClick={guardar}>Guardar</Boton>
           <Aviso mensaje={msg} />
         </div>
+      </Seccion>
+
+      <Seccion titulo="Logo de la empresa" ayuda="Aparece en el encabezado del PDF. Se guarda al subirlo.">
+        <SubirLogo
+          url={logo}
+          carpeta="organizacion"
+          onCambio={async (url) => {
+            const r = await supabase.from("organizacion").update({ logo_url: url }).eq("id", true);
+            if (!r.error) setLogo(url);
+            return r.error ? r.error.message : null;
+          }}
+        />
       </Seccion>
     </div>
   );

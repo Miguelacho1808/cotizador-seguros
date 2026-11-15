@@ -38,7 +38,8 @@ export default function CotizacionDetalle() {
   const navigate = useNavigate();
   const [cot, setCot] = useState<Cot | null>(null);
   const [benef, setBenef] = useState<Record<string, { nombre: string; estado: string; orden: number }[]>>({});
-  const [org, setOrg] = useState<string | null>(null);
+  const [org, setOrg] = useState<{ nombre: string; logo_url: string | null } | null>(null);
+  const [logos, setLogos] = useState<Record<string, string | null>>({});
   const [msg, setMsg] = useState<Mensaje | null>(null);
 
   useEffect(() => {
@@ -58,6 +59,17 @@ export default function CotizacionDetalle() {
           const ids = [...new Set(c.cotizacion_planes.map((p) => p.plan_id).filter(Boolean))] as string[];
           if (ids.length > 0)
             supabase
+              .from("planes")
+              .select("id,aseguradoras(logo_url)")
+              .in("id", ids)
+              .then(({ data: l }) => {
+                const m: Record<string, string | null> = {};
+                for (const x of (l as unknown as { id: string; aseguradoras: { logo_url: string | null } | null }[]) ?? [])
+                  m[x.id] = x.aseguradoras?.logo_url ?? null;
+                setLogos(m);
+              });
+          if (ids.length > 0)
+            supabase
               .from("plan_beneficios")
               .select("plan_id,estado,beneficios(nombre,orden)")
               .in("plan_id", ids)
@@ -75,9 +87,9 @@ export default function CotizacionDetalle() {
   useEffect(() => {
     supabase
       .from("organizacion")
-      .select("nombre")
+      .select("nombre,logo_url")
       .maybeSingle()
-      .then(({ data }) => setOrg((data as { nombre: string } | null)?.nombre ?? null));
+      .then(({ data }) => setOrg((data as { nombre: string; logo_url: string | null } | null) ?? null));
   }, []);
 
   if (!cot) return <div>{msg ? <Aviso mensaje={msg} /> : <p className="text-zinc-400">Cargando…</p>}</div>;
@@ -163,10 +175,15 @@ export default function CotizacionDetalle() {
           numero: cot.numero,
           fecha: cot.created_at,
           tipo: cot.tipo,
-          organizacion: org,
+          organizacion: org?.nombre ?? null,
+          organizacionLogo: org?.logo_url ?? null,
           cliente: nombreCliente || "Sin cliente",
           asegurados: [...cot.cotizacion_asegurados].sort((a, b) => a.orden - b.orden),
-          planes: planes.map((p) => ({ ...p, beneficios: (p.plan_id && benef[p.plan_id]) || [] })),
+          planes: planes.map((p) => ({
+            ...p,
+            beneficios: (p.plan_id && benef[p.plan_id]) || [],
+            logo_url: p.plan_id ? (logos[p.plan_id] ?? null) : null,
+          })),
         }}
       />
 

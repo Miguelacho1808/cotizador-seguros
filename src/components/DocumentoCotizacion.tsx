@@ -15,6 +15,7 @@ export type PlanDoc = {
     porPersona?: { nombre: string; edad: number; base: number | null; addons: number }[];
   } | null;
   beneficios: { nombre: string; estado: string }[];
+  logo_url?: string | null;
 };
 
 export type DatosDoc = {
@@ -22,6 +23,7 @@ export type DatosDoc = {
   fecha: string;
   tipo: string;
   organizacion: string | null;
+  organizacionLogo?: string | null;
   cliente: string;
   asegurados: { nombre: string; edad: number; sexo: string }[];
   planes: PlanDoc[];
@@ -31,13 +33,13 @@ const usd = (n: number) => `$${Number(n).toLocaleString("es-VE")}`;
 const AZUL = "#12284c";
 const CELESTE = "#dbeafe";
 
-type Grupo = { clave: string; aseguradora: string; plan: string; planes: PlanDoc[] };
+type Grupo = { clave: string; aseguradora: string; plan: string; planes: PlanDoc[]; logo: string | null };
 
 function agrupar(planes: PlanDoc[]): Grupo[] {
   const m = new Map<string, Grupo>();
   for (const p of planes) {
     const clave = `${p.aseguradora_nombre}|${p.plan_nombre}`;
-    const g = m.get(clave) ?? { clave, aseguradora: p.aseguradora_nombre, plan: p.plan_nombre, planes: [] };
+    const g = m.get(clave) ?? { clave, aseguradora: p.aseguradora_nombre, plan: p.plan_nombre, planes: [], logo: p.logo_url ?? null };
     g.planes.push(p);
     m.set(clave, g);
   }
@@ -65,8 +67,14 @@ function Bloque({ g, repetida }: { g: Grupo; repetida: boolean }) {
   return (
     <div className="sin-corte overflow-hidden rounded border border-zinc-300 text-[11px] text-zinc-800">
       <div className="px-2 py-2 text-center" style={{ background: AZUL, color: "#fff" }}>
-        <p className="text-sm font-bold">{g.aseguradora}</p>
-        {repetida && <p className="text-[10px] opacity-80">{g.plan}</p>}
+        {g.logo ? (
+          <div className="mx-auto flex h-10 w-40 items-center justify-center rounded bg-white px-2 py-1">
+            <img src={g.logo} alt={g.aseguradora} className="max-h-full max-w-full object-contain" />
+          </div>
+        ) : (
+          <p className="text-sm font-bold">{g.aseguradora}</p>
+        )}
+        {(repetida || g.logo) && <p className="mt-0.5 text-[10px] opacity-80">{repetida ? g.plan : g.aseguradora}</p>}
       </div>
       <table className="w-full">
         <thead>
@@ -171,7 +179,11 @@ export default function DocumentoCotizacion({ d }: { d: DatosDoc }) {
             {d.tipo === "renovacion" ? "Renovación" : "Nueva póliza"}
           </p>
         </div>
-        {d.organizacion && <p className="text-sm font-semibold text-zinc-600">{d.organizacion}</p>}
+        {d.organizacionLogo ? (
+          <img src={d.organizacionLogo} alt={d.organizacion ?? ""} className="max-h-12 max-w-[180px] object-contain" />
+        ) : (
+          d.organizacion && <p className="text-sm font-semibold text-zinc-600">{d.organizacion}</p>
+        )}
       </div>
       <p className="text-xs text-zinc-600">
         Asegurados: {d.asegurados.map((a) => `${a.nombre} (${a.edad} años)`).join(", ")}
@@ -194,7 +206,11 @@ export default function DocumentoCotizacion({ d }: { d: DatosDoc }) {
                 <th className="px-3 py-2">Beneficio</th>
                 {grupos.map((g) => (
                   <th key={g.clave} className="px-2 py-2 text-center">
-                    {g.aseguradora}
+                    {g.logo ? (
+                      <img src={g.logo} alt={g.aseguradora} className="mx-auto mb-0.5 h-6 max-w-[90px] object-contain" />
+                    ) : (
+                      g.aseguradora
+                    )}
                     {(conteo.get(g.aseguradora) ?? 0) > 1 && (
                       <span className="block text-[10px] font-normal text-zinc-500">{g.plan}</span>
                     )}

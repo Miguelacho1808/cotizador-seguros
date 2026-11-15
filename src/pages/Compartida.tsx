@@ -13,7 +13,7 @@ type Datos = {
   asegurados: { nombre: string; edad: number; sexo: string; titular: boolean }[];
   planes: Plan[];
   asesor: { nombre: string; apellido: string | null; whatsapp: string | null } | null;
-  organizacion: { nombre: string; rif: string | null; telefono: string | null } | null;
+  organizacion: { nombre: string; rif: string | null; telefono: string | null; logo_url?: string | null } | null;
 };
 
 export default function Compartida() {
@@ -54,6 +54,7 @@ export default function Compartida() {
           fecha: datos.fecha,
           tipo: datos.tipo,
           organizacion: datos.organizacion?.nombre ?? null,
+          organizacionLogo: datos.organizacion?.logo_url ?? null,
           cliente: [datos.cliente?.nombre, datos.cliente?.apellido].filter(Boolean).join(" "),
           asegurados: datos.asegurados,
           planes: datos.planes,
