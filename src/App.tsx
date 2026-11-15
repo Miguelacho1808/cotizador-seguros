@@ -11,6 +11,10 @@ import AseguradoraDetalle from "./pages/AseguradoraDetalle";
 import PlanEditor from "./pages/PlanEditor";
 import Usuarios from "./pages/Usuarios";
 import Configuracion from "./pages/Configuracion";
+import Cotizaciones from "./pages/Cotizaciones";
+import NuevaCotizacion from "./pages/NuevaCotizacion";
+import CotizacionDetalle from "./pages/CotizacionDetalle";
+import Compartida from "./pages/Compartida";
 
 function Centro({ children }: { children: ReactNode }) {
   return (
@@ -62,8 +66,12 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/compartir/:token" element={<Compartida />} />
           <Route element={<Protegido />}>
             <Route path="/" element={<Inicio />} />
+            <Route path="/cotizaciones" element={<Cotizaciones />} />
+            <Route path="/cotizaciones/nueva" element={<NuevaCotizacion />} />
+            <Route path="/cotizaciones/:id" element={<CotizacionDetalle />} />
             <Route path="/aseguradoras" element={<Aseguradoras />} />
             <Route path="/aseguradoras/:id" element={<AseguradoraDetalle />} />
             <Route path="/planes/:id" element={<PlanEditor />} />

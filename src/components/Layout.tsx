@@ -14,7 +14,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 p-4">
+      <aside className="flex w-60 print:hiddenshrink-0 flex-col border-r border-zinc-800 bg-zinc-900 p-4">
         <div className="mb-6">
           <p className="text-xs uppercase tracking-wide text-zinc-500">Bienvenido</p>
           <p className="text-lg font-semibold">{nombre}</p>
@@ -22,14 +22,17 @@ export default function Layout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="space-y-1">
-          <span
-            className="block cursor-not-allowed rounded-lg bg-indigo-500/10 px-3 py-2 text-sm text-indigo-300/60"
-            title="Disponible en la próxima entrega"
+          <NavLink
+            to="/cotizaciones/nueva"
+            className="block rounded-lg bg-indigo-500/20 px-3 py-2 text-sm text-indigo-200 hover:bg-indigo-500/30"
           >
             + Nueva cotización
-          </span>
+          </NavLink>
           <NavLink to="/" end className={clase}>
             Inicio
+          </NavLink>
+          <NavLink to="/cotizaciones" end className={clase}>
+            Cotizaciones
           </NavLink>
           <NavLink to="/aseguradoras" className={clase}>
             Aseguradoras
