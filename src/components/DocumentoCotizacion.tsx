@@ -168,7 +168,7 @@ export default function DocumentoCotizacion({ d }: { d: DatosDoc }) {
   beneficios.sort((a, b) => (orden.indexOf(a) + 1 || 999) - (orden.indexOf(b) + 1 || 999));
 
   return (
-    <div className="hoja mx-auto w-full max-w-[860px] space-y-4 bg-white p-5 text-zinc-800">
+    <div className="hoja mx-auto w-full max-w-[860px] space-y-4 bg-white p-5 text-zinc-800 print:max-w-none print:space-y-3 print:p-0">
       <div className="flex flex-wrap items-end justify-between gap-2 border-b-2 pb-2" style={{ borderColor: AZUL }}>
         <div>
           <p className="text-lg font-bold" style={{ color: AZUL }}>
@@ -189,7 +189,7 @@ export default function DocumentoCotizacion({ d }: { d: DatosDoc }) {
         Asegurados: {d.asegurados.map((a) => `${a.nombre} (${a.edad} años)`).join(", ")}
       </p>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 print:grid-cols-2">
         {grupos.map((g) => (
           <Bloque key={g.clave} g={g} repetida={(conteo.get(g.aseguradora) ?? 0) > 1} />
         ))}
@@ -221,9 +221,9 @@ export default function DocumentoCotizacion({ d }: { d: DatosDoc }) {
             <tbody>
               {beneficios.map((n) => (
                 <tr key={n} className="border-b border-zinc-100">
-                  <td className="px-3 py-1.5">{n}</td>
+                  <td className="px-3 py-1.5 print:py-0.5">{n}</td>
                   {grupos.map((g) => (
-                    <td key={g.clave} className="px-2 py-1.5 text-center">
+                    <td key={g.clave} className="px-2 py-1.5 text-center print:py-0.5">
                       <Marca estado={g.planes[0].beneficios.find((b) => b.nombre === n)?.estado} />
                     </td>
                   ))}
