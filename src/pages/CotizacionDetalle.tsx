@@ -3,11 +3,12 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Aviso, Boton, type Mensaje } from "../components/ui";
 import { ESTADOS, colorEstado } from "./Cotizaciones";
-
-const usd = (n: number) => `$${Number(n).toLocaleString("es-VE")}`;
+import DocumentoCotizacion, { type PlanDoc } from "../components/DocumentoCotizacion";
 
 type Plan = {
   id: string;
+  plan_id: string | null;
+  desglose: PlanDoc["desglose"];
   aseguradora_nombre: string;
   plan_nombre: string;
   cobertura_monto: number;
@@ -36,22 +37,48 @@ export default function CotizacionDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [cot, setCot] = useState<Cot | null>(null);
+  const [benef, setBenef] = useState<Record<string, { nombre: string; estado: string; orden: number }[]>>({});
+  const [org, setOrg] = useState<string | null>(null);
   const [msg, setMsg] = useState<Mensaje | null>(null);
 
   useEffect(() => {
     supabase
       .from("cotizaciones")
       .select(
-        "id,numero,estado,grupo,tipo,canal,token_publico,created_at,clientes(nombre,apellido,telefono,email),cotizacion_asegurados(id,nombre,edad,sexo,es_titular,orden),cotizacion_planes(id,aseguradora_nombre,plan_nombre,cobertura_monto,deducible,addons,prima_anual,prima_semestral,prima_trimestral,prima_mensual)",
+        "id,numero,estado,grupo,tipo,canal,token_publico,created_at,clientes(nombre,apellido,telefono,email),cotizacion_asegurados(id,nombre,edad,sexo,es_titular,orden),cotizacion_planes(id,plan_id,desglose,aseguradora_nombre,plan_nombre,cobertura_monto,deducible,addons,prima_anual,prima_semestral,prima_trimestral,prima_mensual)",
       )
       .eq("id", id!)
       .maybeSingle()
       .then(({ data, error }) => {
         if (error) setMsg({ tipo: "error", texto: error.message });
         else if (!data) setMsg({ tipo: "error", texto: "Cotización no encontrada." });
-        else setCot(data as unknown as Cot);
+        else {
+          const c = data as unknown as Cot;
+          setCot(c);
+          const ids = [...new Set(c.cotizacion_planes.map((p) => p.plan_id).filter(Boolean))] as string[];
+          if (ids.length > 0)
+            supabase
+              .from("plan_beneficios")
+              .select("plan_id,estado,beneficios(nombre,orden)")
+              .in("plan_id", ids)
+              .then(({ data: b }) => {
+                const m: Record<string, { nombre: string; estado: string; orden: number }[]> = {};
+                for (const x of (b as unknown as { plan_id: string; estado: string; beneficios: { nombre: string; orden: number } }[]) ?? [])
+                  (m[x.plan_id] ??= []).push({ nombre: x.beneficios.nombre, estado: x.estado, orden: x.beneficios.orden });
+                for (const k of Object.keys(m)) m[k].sort((a, b2) => a.orden - b2.orden);
+                setBenef(m);
+              });
+        }
       });
   }, [id]);
+
+  useEffect(() => {
+    supabase
+      .from("organizacion")
+      .select("nombre")
+      .maybeSingle()
+      .then(({ data }) => setOrg((data as { nombre: string } | null)?.nombre ?? null));
+  }, []);
 
   if (!cot) return <div>{msg ? <Aviso mensaje={msg} /> : <p className="text-zinc-400">Cargando…</p>}</div>;
 
@@ -88,7 +115,7 @@ export default function CotizacionDetalle() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="mx-auto max-w-5xl space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
         <div>
           <Link to="/cotizaciones" className="text-sm text-zinc-400 hover:text-zinc-100">
@@ -113,63 +140,35 @@ export default function CotizacionDetalle() {
       </div>
       <Aviso mensaje={msg} />
 
-      <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-lg font-semibold">{nombreCliente || "Sin cliente"}</p>
-            <p className="text-sm text-zinc-400">
-              {[cot.clientes?.telefono, cot.clientes?.email].filter(Boolean).join(" · ")}
-            </p>
-            <p className="text-xs text-zinc-500">
-              {new Date(cot.created_at).toLocaleDateString("es-VE")} · {cot.grupo} ·{" "}
-              {cot.tipo === "renovacion" ? "renovación" : "nueva póliza"}
-              {cot.canal ? ` · ${cot.canal}` : ""}
-            </p>
-          </div>
-          <div className="print:hidden">
-            <select
-              value={cot.estado}
-              onChange={(e) => cambiarEstado(e.target.value)}
-              className={`rounded-full border-0 px-3 py-1 text-sm ${colorEstado[cot.estado] ?? ""}`}
-            >
-              {Object.entries(ESTADOS).map(([v, n]) => (
-                <option key={v} value={v} className="bg-zinc-800 text-zinc-100">
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2 text-sm">
-          {[...cot.cotizacion_asegurados]
-            .sort((a, b) => a.orden - b.orden)
-            .map((a) => (
-              <span key={a.id} className="rounded-full border border-zinc-700 px-3 py-1">
-                {a.nombre} · {a.edad} años · {a.sexo}
-              </span>
-            ))}
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+        <p className="text-sm text-zinc-400">
+          {[cot.clientes?.telefono, cot.clientes?.email].filter(Boolean).join(" · ") || "Cliente sin contacto"}
+          {cot.canal ? ` · ${cot.canal}` : ""}
+        </p>
+        <select
+          value={cot.estado}
+          onChange={(e) => cambiarEstado(e.target.value)}
+          className={`rounded-full border-0 px-3 py-1 text-sm ${colorEstado[cot.estado] ?? ""}`}
+        >
+          {Object.entries(ESTADOS).map(([v, n]) => (
+            <option key={v} value={v} className="bg-zinc-800 text-zinc-100">
+              {n}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {planes.map((p) => (
-          <div key={p.id} className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-            <p className="font-semibold">{p.aseguradora_nombre}</p>
-            <p className="text-sm text-zinc-400">
-              {p.plan_nombre} · {usd(p.cobertura_monto)}
-              {Number(p.deducible) > 0 && ` · deducible ${usd(p.deducible)}`}
-            </p>
-            <p className="text-3xl font-bold">
-              {usd(p.prima_mensual)}
-              <span className="text-sm font-normal text-zinc-400">/mes</span>
-            </p>
-            <p className="text-xs text-zinc-400">
-              Anual {usd(p.prima_anual)} · Semestral {usd(p.prima_semestral)} · Trimestral {usd(p.prima_trimestral)}
-            </p>
-            {p.addons.length > 0 && <p className="text-xs text-zinc-500">Add-ons: {p.addons.join(", ")}</p>}
-          </div>
-        ))}
-      </div>
+      <DocumentoCotizacion
+        d={{
+          numero: cot.numero,
+          fecha: cot.created_at,
+          tipo: cot.tipo,
+          organizacion: org,
+          cliente: nombreCliente || "Sin cliente",
+          asegurados: [...cot.cotizacion_asegurados].sort((a, b) => a.orden - b.orden),
+          planes: planes.map((p) => ({ ...p, beneficios: (p.plan_id && benef[p.plan_id]) || [] })),
+        }}
+      />
 
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm print:hidden">
         <p className="text-zinc-400">Enlace público para el cliente:</p>

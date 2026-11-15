@@ -11,3 +11,22 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Impresión / PDF de cotizaciones */
+@page {
+  size: A4;
+  margin: 10mm;
+}
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .hoja,
+  .hoja * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .sin-corte {
+    break-inside: avoid;
+  }
+}
