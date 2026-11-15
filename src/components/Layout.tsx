@@ -14,7 +14,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-60 print:hiddenshrink-0 flex-col border-r border-zinc-800 bg-zinc-900 p-4">
+      <aside className="flex w-60 print:hidden shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 p-4">
         <div className="mb-6">
           <p className="text-xs uppercase tracking-wide text-zinc-500">Bienvenido</p>
           <p className="text-lg font-semibold">{nombre}</p>
