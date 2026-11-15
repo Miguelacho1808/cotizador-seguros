@@ -88,9 +88,9 @@ export default function Compartida() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-24 text-slate-900" style={{ colorScheme: "light" }}>
+    <div className="min-h-screen bg-slate-100 pb-24 text-slate-900 print:min-h-0 print:bg-white print:pb-0" style={{ colorScheme: "light" }}>
       <div className="mx-auto max-w-xl">
-        <header className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-5 text-white">
+        <header className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-5 text-white print:hidden">
           <div className="flex h-14 w-24 items-center justify-center rounded-lg bg-white p-1.5">
             {datos.organizacion?.logo_url ? (
               <img src={datos.organizacion.logo_url} alt="" className="max-h-full max-w-full object-contain" />
@@ -111,7 +111,7 @@ export default function Compartida() {
           </div>
         </header>
 
-        <section className="space-y-2 bg-white px-4 py-4">
+        <section className="space-y-2 bg-white px-4 py-4 print:hidden">
           <p className="text-lg font-bold">{cliente}</p>
           <div className="flex flex-wrap gap-2">
             {datos.asegurados.map((a, i) => (
@@ -122,8 +122,8 @@ export default function Compartida() {
           </div>
         </section>
 
-        <div className="space-y-5 p-4">
-          <section className="overflow-hidden rounded-2xl bg-slate-900 text-white shadow-lg">
+        <div className="space-y-5 p-4 print:p-0">
+          <section className="overflow-hidden rounded-2xl bg-slate-900 text-white shadow-lg print:hidden">
             <div className="space-y-2 p-4">
               <span className="inline-block rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold">
                 ★ Mejor precio
@@ -141,7 +141,7 @@ export default function Compartida() {
             </div>
           </section>
 
-          <section className="space-y-2">
+          <section className="space-y-2 print:hidden">
             <p className="text-xs font-bold">Opciones rápidas</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5 rounded-xl border-2 border-emerald-400 bg-white p-3">
@@ -173,7 +173,7 @@ export default function Compartida() {
             </div>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 print:hidden">
             <p className="text-xs font-bold">Opciones cotizadas</p>
             {calc.grupos.map((g) => (
               <div key={g.nombre} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -236,7 +236,7 @@ export default function Compartida() {
           <section className="space-y-3">
             <button
               onClick={() => setVerPdf(!verPdf)}
-              className="w-full rounded-lg border border-slate-300 bg-white py-2.5 text-sm font-semibold text-slate-700"
+              className="w-full rounded-lg border border-slate-300 bg-white py-2.5 text-sm font-semibold text-slate-700 print:hidden"
             >
               {verPdf ? "Ocultar comparativa" : "Ver comparativa y beneficios (PDF)"}
             </button>
@@ -248,7 +248,7 @@ export default function Compartida() {
                 >
                   Imprimir / Guardar PDF
                 </button>
-                <div className="overflow-x-auto rounded-xl bg-white">
+                <div className="overflow-x-auto rounded-xl bg-white print:overflow-visible">
                   <DocumentoCotizacion
                     d={{
                       numero: datos.numero,
@@ -267,7 +267,7 @@ export default function Compartida() {
           </section>
 
           {datos.asesor && (
-            <p className="text-center text-xs text-slate-500">
+            <p className="text-center text-xs text-slate-500 print:hidden">
               Tu asesor: <strong>{[datos.asesor.nombre, datos.asesor.apellido].filter(Boolean).join(" ")}</strong>
             </p>
           )}
