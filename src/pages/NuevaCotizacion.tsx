@@ -20,7 +20,7 @@ const AREAS = [
 const CANALES = ["Chatbot", "Email", "Redes Sociales", "Referido", "Web", "WhatsApp"];
 const PASOS = ["Área", "Cliente", "Asegurados", "Precios", "Resumen"];
 const MAX_COBERTURAS = 4;
-const MAX_SELECCION = 6;
+const MAX_EMPRESAS = 4;
 const ADDONS_POR_DEFECTO = ["Viajes", "Funerario", "AMD"];
 
 type ClienteSel = { id?: string; nombre: string; apellido: string; telefono: string; email: string };
@@ -248,10 +248,22 @@ export default function NuevaCotizacion() {
     });
   };
 
-  const alternarSeleccion = (clave: string) => {
+  const empresasElegidas = new Set(elegidas.map((o) => o.aseguradora));
+  const puedeAgregar = (o: Opcion) => empresasElegidas.has(o.aseguradora) || empresasElegidas.size < MAX_EMPRESAS;
+
+  const alternarSeleccion = (o: Opcion) => {
     setSeleccion((prev) =>
-      prev.includes(clave) ? prev.filter((c) => c !== clave) : prev.length >= MAX_SELECCION ? prev : [...prev, clave],
+      prev.includes(o.clave) ? prev.filter((c) => c !== o.clave) : puedeAgregar(o) ? [...prev, o.clave] : prev,
     );
+  };
+
+  const alternarEmpresa = (lista: Opcion[]) => {
+    const claves = lista.map((o) => o.clave);
+    setSeleccion((prev) => {
+      if (claves.every((c) => prev.includes(c))) return prev.filter((c) => !claves.includes(c));
+      if (!puedeAgregar(lista[0])) return prev;
+      return [...new Set([...prev, ...claves])];
+    });
   };
 
   const guardar = async () => {
@@ -708,14 +720,23 @@ export default function NuevaCotizacion() {
           <p className="text-sm text-zinc-400">
             {cargandoTarifas
               ? "Calculando…"
-              : `${porAseguradora.length} empresa(s) con cobertura disponible — selecciona hasta ${MAX_SELECCION} para comparar`}
+              : `${porAseguradora.length} empresa(s) con cobertura disponible — elige hasta ${MAX_EMPRESAS} para comparar (con todas las sumas aseguradas que quieras)`}
           </p>
           <Aviso mensaje={msg} />
 
           <div className="grid gap-4 md:grid-cols-2">
             {porAseguradora.map(([nombre, lista]) => (
               <div key={nombre} className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                <p className="font-semibold">{nombre}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold">{nombre}</p>
+                  <button
+                    onClick={() => alternarEmpresa(lista)}
+                    disabled={!lista.every((o) => seleccion.includes(o.clave)) && !puedeAgregar(lista[0])}
+                    className="rounded-md border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800 disabled:opacity-40"
+                  >
+                    {lista.every((o) => seleccion.includes(o.clave)) ? "Quitar empresa" : "Incluir todas"}
+                  </button>
+                </div>
                 {lista.map((o) => {
                   const marcada = seleccion.includes(o.clave);
                   return (
@@ -783,8 +804,8 @@ export default function NuevaCotizacion() {
                       </ul>
 
                       <button
-                        onClick={() => alternarSeleccion(o.clave)}
-                        disabled={!marcada && seleccion.length >= MAX_SELECCION}
+                        onClick={() => alternarSeleccion(o)}
+                        disabled={!marcada && !puedeAgregar(o)}
                         className={`w-full rounded-md border py-1 text-sm disabled:opacity-40 ${
                           marcada ? "border-indigo-400 bg-indigo-500/30" : "border-zinc-700 hover:bg-zinc-800"
                         }`}
@@ -808,7 +829,7 @@ export default function NuevaCotizacion() {
               ← Volver
             </Boton>
             <div className="flex items-center gap-3">
-              <span className="text-sm text-zinc-400">{elegidas.length} seleccionadas</span>
+              <span className="text-sm text-zinc-400">{empresasElegidas.size} de {MAX_EMPRESAS} empresas · {elegidas.length} opciones</span>
               <Boton onClick={avanzar} disabled={elegidas.length === 0}>
                 Generar cotización →
               </Boton>
