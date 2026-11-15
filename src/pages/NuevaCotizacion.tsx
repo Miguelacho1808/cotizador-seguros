@@ -74,7 +74,7 @@ export default function NuevaCotizacion() {
     void (async () => {
       const [t, a, p] = await Promise.all([
         supabase.from("tarifas").select("cobertura_monto").eq("activa", true),
-        supabase.from("addons").select("id,nombre,orden").order("orden"),
+        supabase.from("addons").select("id,nombre,orden,solo_sexo").order("orden"),
         supabase
           .from("planes")
           .select(
@@ -689,7 +689,7 @@ export default function NuevaCotizacion() {
                 ))}
               </div>
               <p className="text-xs text-zinc-500">
-                Los add-ons se cobran por persona, solo a quienes estén dentro del rango de edad del add-on.
+                Los add-ons se cobran por persona, solo a quienes estén dentro del rango de edad del add-on. Maternidad solo se cobra a asegurados de sexo femenino.
               </p>
             </div>
 

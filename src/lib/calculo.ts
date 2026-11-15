@@ -44,7 +44,7 @@ export type PlanCalc = {
   plan_addons: { addon_id: string; edad_min: number | null; edad_max: number | null }[];
 };
 
-export type AddonCat = { id: string; nombre: string };
+export type AddonCat = { id: string; nombre: string; solo_sexo?: "M" | "F" | null };
 
 export type LineaAddon = { addon_id: string; nombre: string; total: number; incluido: boolean; personas: number };
 
@@ -170,7 +170,9 @@ export function calcularOpciones(params: {
         let personas = 0;
         let disponible = false;
         let todoIncluido = true;
+        const soloSexo = addonsCatalogo.find((x) => x.id === addonId)?.solo_sexo ?? null;
         asegurados.forEach((a, i) => {
+          if (soloSexo && a.sexo !== soloSexo) return;
           const fila = plan.modalidad === "por_grupo" ? elegido.filas[0]! : elegido.filas[i]!;
           const c = costoAddon(fila, plan, addonId, a.edad);
           if (!c) return;
