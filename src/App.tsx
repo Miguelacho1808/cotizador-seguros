@@ -15,6 +15,7 @@ import Cotizaciones from "./pages/Cotizaciones";
 import NuevaCotizacion from "./pages/NuevaCotizacion";
 import CotizacionDetalle from "./pages/CotizacionDetalle";
 import Compartida from "./pages/Compartida";
+import MiPerfil from "./pages/MiPerfil";
 
 function Centro({ children }: { children: ReactNode }) {
   return (
@@ -72,6 +73,7 @@ export default function App() {
             <Route path="/cotizaciones" element={<Cotizaciones />} />
             <Route path="/cotizaciones/nueva" element={<NuevaCotizacion />} />
             <Route path="/cotizaciones/:id" element={<CotizacionDetalle />} />
+            <Route path="/perfil" element={<MiPerfil />} />
             <Route path="/aseguradoras" element={<Aseguradoras />} />
             <Route path="/aseguradoras/:id" element={<AseguradoraDetalle />} />
             <Route path="/planes/:id" element={<PlanEditor />} />

@@ -16,6 +16,7 @@ type AuthCtx = {
   perfil: Perfil | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  actualizarPerfil: (parcial: Partial<Perfil>) => void;
 };
 
 const Ctx = createContext<AuthCtx>({
@@ -23,6 +24,7 @@ const Ctx = createContext<AuthCtx>({
   perfil: null,
   loading: true,
   signOut: async () => {},
+  actualizarPerfil: () => {},
 });
 
 export const useAuth = () => useContext(Ctx);
@@ -71,5 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  return <Ctx.Provider value={{ session, perfil, loading, signOut }}>{children}</Ctx.Provider>;
+  const actualizarPerfil = (parcial: Partial<Perfil>) => setPerfil((p) => (p ? { ...p, ...parcial } : p));
+
+  return <Ctx.Provider value={{ session, perfil, loading, signOut, actualizarPerfil }}>{children}</Ctx.Provider>;
 }

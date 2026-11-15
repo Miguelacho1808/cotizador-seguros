@@ -65,7 +65,7 @@ export default function Compartida() {
     return <p className="p-8 text-center text-zinc-400">Esta cotización no existe o el enlace no es válido.</p>;
 
   const cliente = [datos.cliente?.nombre, datos.cliente?.apellido].filter(Boolean).join(" ");
-  const tel = (datos.asesor?.whatsapp ?? datos.organizacion?.telefono ?? "").replace(/\D/g, "");
+  const tel = (datos.asesor?.whatsapp ?? "").replace(/\D/g, "");
   const fecha = new Date(datos.fecha).toLocaleDateString("es-VE");
 
   const wa = (texto: string) => (tel ? `https://wa.me/${tel}?text=${encodeURIComponent(texto)}` : undefined);
