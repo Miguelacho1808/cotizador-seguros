@@ -63,6 +63,8 @@ export default function NuevaCotizacion() {
   const [cargandoTarifas, setCargandoTarifas] = useState(false);
   const [coberturas, setCoberturas] = useState<number[]>([100000]);
   const [addonsElegidos, setAddonsElegidos] = useState<string[]>([]);
+  const [tiposActivos, setTiposActivos] = useState<string[]>(["hcm", "emca", "amy"]);
+  const [planesOcultos, setPlanesOcultos] = useState<string[]>([]);
   const [addonsEmpresa, setAddonsEmpresa] = useState<Record<string, string[]>>({});
   const [dedElegido, setDedElegido] = useState<Record<string, number>>({});
   const [seleccion, setSeleccion] = useState<string[]>([]);
@@ -189,7 +191,10 @@ export default function NuevaCotizacion() {
     [paso, planes, tarifas, addonsCat, aseguradosCalc, coberturas, addonsElegidos, addonsEmpresa, tipoCot, dedElegido],
   );
 
-  const elegidas = opciones.filter((o) => seleccion.includes(o.clave));
+  const opcionesTipo = opciones.filter((o) => tiposActivos.includes(o.tipo));
+  const visibles = opcionesTipo.filter((o) => !planesOcultos.includes(o.plan_id));
+  const tiposDisponibles = [...new Set(opciones.map((o) => o.tipo))];
+  const elegidas = visibles.filter((o) => seleccion.includes(o.clave));
   // Add-ons con precio para cada aseguradora (según las tarifas cargadas de las sumas elegidas)
   const addonsDisponibles = useMemo(() => {
     const empDePlan = new Map(planes.map((p) => [p.id, p.aseguradora.id]));
@@ -214,10 +219,18 @@ export default function NuevaCotizacion() {
 
   const logoDe = useMemo(() => new Map(planes.map((p) => [p.aseguradora.id, p.aseguradora.logo_url ?? null])), [planes]);
   const porAseguradora = useMemo(() => {
-    const m = new Map<string, Opcion[]>();
-    for (const o of opciones) m.set(o.aseguradora, [...(m.get(o.aseguradora) ?? []), o]);
-    return [...m.entries()];
-  }, [opciones]);
+    const m = new Map<
+      string,
+      { nombre: string; empId: string; lista: Opcion[]; planes: { id: string; nombre: string }[] }
+    >();
+    for (const o of opcionesTipo) {
+      const g = m.get(o.aseguradora) ?? { nombre: o.aseguradora, empId: o.aseguradora_id, lista: [], planes: [] };
+      if (!g.planes.some((p) => p.id === o.plan_id)) g.planes.push({ id: o.plan_id, nombre: o.plan });
+      if (!planesOcultos.includes(o.plan_id)) g.lista.push(o);
+      m.set(o.aseguradora, g);
+    }
+    return [...m.values()];
+  }, [opcionesTipo, planesOcultos]);
 
   // ---- validaciones por paso
   const edadesValidas = asegurados.every((a) => /^\d{1,3}$/.test(a.edad.trim()) && Number(a.edad) <= 120);
@@ -745,6 +758,25 @@ export default function NuevaCotizacion() {
             </div>
           </div>
 
+          {tiposDisponibles.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs uppercase tracking-wide text-zinc-500">Tipo de plan</span>
+              {tiposDisponibles.map((t) => {
+                const on = tiposActivos.includes(t);
+                return (
+                  <button
+                    key={t}
+                    onClick={() => setTiposActivos(on ? tiposActivos.filter((x) => x !== t) : [...tiposActivos, t])}
+                    className={`rounded-lg border px-3 py-1 text-sm ${
+                      on ? "border-indigo-400 bg-indigo-500/20" : "border-zinc-700 text-zinc-500 hover:bg-zinc-800"
+                    }`}
+                  >
+                    {t === "hcm" ? "HCM" : t === "emca" ? "Emergencia médica" : t === "amy" ? "Adulto mayor" : t}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <p className="text-sm text-zinc-400">
             {cargandoTarifas
               ? "Calculando…"
@@ -753,13 +785,13 @@ export default function NuevaCotizacion() {
           <Aviso mensaje={msg} />
 
           <div className="grid gap-4 md:grid-cols-2">
-            {porAseguradora.map(([nombre, lista]) => (
+            {porAseguradora.map(({ nombre, empId, lista, planes: chipsPlanes }) => (
               <div key={nombre} className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
                 <div className="flex items-center justify-between gap-2">
-                  {logoDe.get(lista[0].aseguradora_id) ? (
+                  {logoDe.get(empId) ? (
                     <div className="flex h-10 w-32 items-center justify-center rounded-md bg-white px-2 py-1">
                       <img
-                        src={logoDe.get(lista[0].aseguradora_id)!}
+                        src={logoDe.get(empId)!}
                         alt={nombre}
                         className="max-h-full max-w-full object-contain"
                       />
@@ -769,14 +801,39 @@ export default function NuevaCotizacion() {
                   )}
                   <button
                     onClick={() => alternarEmpresa(lista)}
-                    disabled={!lista.every((o) => seleccion.includes(o.clave)) && !puedeAgregar(lista[0])}
+                    disabled={lista.length === 0 || (!lista.every((o) => seleccion.includes(o.clave)) && !puedeAgregar(lista[0]))}
                     className="rounded-md border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800 disabled:opacity-40"
                   >
                     {lista.every((o) => seleccion.includes(o.clave)) ? "Quitar empresa" : "Incluir todas"}
                   </button>
                 </div>
+                {chipsPlanes.length > 1 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-zinc-500">Planes:</span>
+                    {chipsPlanes.map((pl) => {
+                      const on = !planesOcultos.includes(pl.id);
+                      return (
+                        <button
+                          key={pl.id}
+                          onClick={() =>
+                            setPlanesOcultos(on ? [...planesOcultos, pl.id] : planesOcultos.filter((x) => x !== pl.id))
+                          }
+                          className={`rounded-md border px-2 py-0.5 text-xs ${
+                            on ? "border-emerald-400 bg-emerald-500/20" : "border-zinc-700 text-zinc-500 hover:bg-zinc-800"
+                          }`}
+                        >
+                          {pl.nombre}
+                        </button>
+                      );
+                    })}
+                    {lista.length > 0 && chipsPlanes.some((pl) => planesOcultos.includes(pl.id)) && (
+                      <span className="text-xs text-amber-400">
+                        {chipsPlanes.filter((pl) => !planesOcultos.includes(pl.id)).length} de {chipsPlanes.length} planes
+                      </span>
+                    )}
+                  </div>
+                )}
                 {(() => {
-                  const empId = lista[0].aseguradora_id;
                   const disp = addonsCat.filter((a) => addonsDisponibles.get(empId)?.has(a.id));
                   if (disp.length === 0) return null;
                   return (
@@ -799,6 +856,7 @@ export default function NuevaCotizacion() {
                     </div>
                   );
                 })()}
+                {lista.length === 0 && <p className="text-sm text-zinc-500">Activa al menos un plan para ver sus precios.</p>}
                 {lista.map((o) => {
                   const marcada = seleccion.includes(o.clave);
                   return (
