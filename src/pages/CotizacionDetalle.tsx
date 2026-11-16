@@ -191,11 +191,6 @@ export default function CotizacionDetalle() {
           })),
         }}
       />
-
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm print:hidden">
-        <p className="text-zinc-400">Enlace público para el cliente:</p>
-        <p className="break-all text-indigo-300">{enlace}</p>
-      </div>
     </div>
   );
 }
