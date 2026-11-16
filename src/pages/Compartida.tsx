@@ -270,12 +270,6 @@ export default function Compartida() {
               </>
             )}
           </section>
-
-          {datos.asesor && (
-            <p className="text-center text-xs text-slate-500 print:hidden">
-              Tu asesor: <strong>{[datos.asesor.nombre, datos.asesor.apellido].filter(Boolean).join(" ")}</strong>
-            </p>
-          )}
         </div>
       </div>
 
