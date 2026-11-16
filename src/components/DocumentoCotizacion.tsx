@@ -1,6 +1,8 @@
 // Documento imprimible de la cotización (hoja blanca): primas por aseguradora y comparativa de beneficios.
 // Se usa en el detalle (para imprimir/PDF) y en el enlace público.
 
+import { cuotasDelPlan } from "../lib/calculo";
+
 export type PlanDoc = {
   aseguradora_nombre: string;
   plan_nombre: string;
@@ -13,6 +15,7 @@ export type PlanDoc = {
   prima_mensual: number;
   desglose?: {
     porPersona?: { nombre: string; edad: number; base: number | null; addons: number }[];
+    cuotas?: string[];
   } | null;
   beneficios: { nombre: string; estado: string }[];
   logo_url?: string | null;
@@ -61,6 +64,16 @@ function Bloque({ g, repetida }: { g: Grupo; repetida: boolean }) {
         }),
       }));
   const addons = [...new Set(g.planes.flatMap((p) => p.addons))];
+  // Formas de pago del plan (varían por plan); "Inicial 40% + 4 cuotas" se divide en dos filas
+  const filasCuotas = cuotasDelPlan(g.planes[0].prima_anual, g.planes[0].desglose?.cuotas).flatMap((c) => {
+    const valorDe = (p: PlanDoc) => cuotasDelPlan(p.prima_anual, g.planes[0].desglose?.cuotas).find((x) => x.clave === c.clave)!;
+    if (c.clave === "inicial_40_4")
+      return [
+        { clave: `${c.clave}_i`, nombre: "Inicial 40%", valor: (p: PlanDoc) => valorDe(p).inicial ?? 0 },
+        { clave: `${c.clave}_c`, nombre: "4 cuotas de", valor: (p: PlanDoc) => valorDe(p).valor },
+      ];
+    return [{ clave: c.clave, nombre: c.nombre, valor: (p: PlanDoc) => valorDe(p).valor }];
+  });
   const celda = "px-2 py-1 text-right";
   const etiqueta = "px-2 py-1 text-left";
 
@@ -121,19 +134,12 @@ function Bloque({ g, repetida }: { g: Grupo; repetida: boolean }) {
               Total Primas
             </td>
           </tr>
-          {(
-            [
-              ["Anual", "prima_anual"],
-              ["Semestral", "prima_semestral"],
-              ["Trimestral", "prima_trimestral"],
-              ["Mensual", "prima_mensual"],
-            ] as const
-          ).map(([nombre, campo], k) => (
-            <tr key={campo} style={k % 2 === 0 ? { background: CELESTE } : undefined} className="font-semibold">
-              <td className={etiqueta}>{nombre}</td>
+          {filasCuotas.map((f, k) => (
+            <tr key={f.clave} style={k % 2 === 0 ? { background: CELESTE } : undefined} className="font-semibold">
+              <td className={etiqueta}>{f.nombre}</td>
               {g.planes.map((p, i) => (
                 <td key={i} className={celda}>
-                  {usd(p[campo])}
+                  {usd(f.valor(p))}
                 </td>
               ))}
             </tr>

@@ -43,6 +43,7 @@ export type PlanCalc = {
     logo_url?: string | null;
   };
   plan_addons: { addon_id: string; edad_min: number | null; edad_max: number | null }[];
+  cuotas?: string[] | null;
 };
 
 export type AddonCat = { id: string; nombre: string; solo_sexo?: "M" | "F" | null };
@@ -69,7 +70,55 @@ export type Opcion = {
   trimestral: number;
   mensual: number;
   porPersona: { nombre: string; edad: number; base: number | null; addons: number }[];
+  cuotas: string[];
 };
+
+/** Formas de pago que puede ofrecer un plan (clave guardada en planes.cuotas). */
+export const CUOTAS: { clave: string; nombre: string; periodo: string }[] = [
+  { clave: "anual", nombre: "Anual", periodo: "/año" },
+  { clave: "semestral", nombre: "Semestral", periodo: "/semestre" },
+  { clave: "cuatrimestral", nombre: "Cuatrimestral", periodo: "/cuatrimestre" },
+  { clave: "trimestral", nombre: "Trimestral", periodo: "/trimestre" },
+  { clave: "mensual", nombre: "Mensual", periodo: "/mes" },
+  { clave: "10_cuotas", nombre: "10 cuotas", periodo: "/cuota" },
+  { clave: "8_cuotas", nombre: "8 cuotas", periodo: "/cuota" },
+  { clave: "5_cuotas", nombre: "5 cuotas", periodo: "/cuota" },
+  { clave: "inicial_40_4", nombre: "Inicial 40% + 4 cuotas", periodo: "/cuota" },
+];
+export const CUOTAS_BASE = ["anual", "semestral", "trimestral", "mensual"];
+
+export type LineaCuota = { clave: string; nombre: string; periodo: string; valor: number; inicial?: number };
+
+/** Valor de cada forma de pago a partir de la prima anual. Cuatrimestral = anual/3; N cuotas = anual/N (redondeo arriba).
+ *  "Inicial 40% + 4 cuotas": inicial = 40% del anual y 4 cuotas iguales con el 60% restante (regla supuesta, sin verificar). */
+export function cuotasDelPlan(anual: number, claves: string[] | null | undefined): LineaCuota[] {
+  const activas = claves && claves.length > 0 ? claves : CUOTAS_BASE;
+  const dividir: Record<string, number> = {
+    anual: 1,
+    semestral: 2,
+    cuatrimestral: 3,
+    trimestral: 4,
+    mensual: 12,
+    "10_cuotas": 10,
+    "8_cuotas": 8,
+    "5_cuotas": 5,
+  };
+  return CUOTAS.filter((c) => activas.includes(c.clave)).map((c) => {
+    if (c.clave === "inicial_40_4")
+      return { ...c, valor: redondeoArriba((anual * 0.6) / 4), inicial: redondeoArriba(anual * 0.4) };
+    return { ...c, valor: redondeoArriba(anual / dividir[c.clave]) };
+  });
+}
+
+/** Cuota "principal" para destacar: la más frecuente que ofrece el plan (mensual, trimestral, …, anual). */
+export function cuotaPrincipal(anual: number, claves: string[] | null | undefined): LineaCuota {
+  const lineas = cuotasDelPlan(anual, claves);
+  for (const k of ["mensual", "trimestral", "cuatrimestral", "semestral", "anual"]) {
+    const l = lineas.find((x) => x.clave === k);
+    if (l) return l;
+  }
+  return lineas[0] ?? { clave: "anual", nombre: "Anual", periodo: "/año", valor: anual };
+}
 
 export const redondeoArriba = (n: number) => Math.ceil(n - 1e-9);
 
@@ -222,6 +271,7 @@ export function calcularOpciones(params: {
         anual,
         ...fraccionar(anual),
         porPersona,
+        cuotas: plan.cuotas && plan.cuotas.length > 0 ? plan.cuotas : CUOTAS_BASE,
       });
     }
   }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { telefonoWhatsApp } from "../lib/telefono";
+import { cuotaPrincipal, cuotasDelPlan } from "../lib/calculo";
 import DocumentoCotizacion, { type PlanDoc } from "../components/DocumentoCotizacion";
 
 const usd = (n: number) => `$${Number(n).toLocaleString("es-VE")}`;
@@ -19,6 +20,7 @@ type Datos = {
   organizacion: { nombre: string; rif: string | null; telefono: string | null; logo_url?: string | null } | null;
 };
 
+const cp = (p: Plan) => cuotaPrincipal(p.prima_anual, p.desglose?.cuotas);
 const GRUPO: Record<string, string> = { individual: "Plan Individual", pareja: "Plan Pareja", familiar: "Plan Familiar" };
 
 export default function Compartida() {
@@ -41,15 +43,15 @@ export default function Compartida() {
     if (!datos) return null;
     const planes = datos.planes;
     if (planes.length === 0) return null;
-    const masBarata = [...planes].sort((a, b) => a.prima_mensual - b.prima_mensual)[0];
+    const masBarata = [...planes].sort((a, b) => a.prima_anual - b.prima_anual)[0];
     const menorCob = Math.min(...planes.map((p) => p.cobertura_monto));
     const mayorCob = Math.max(...planes.map((p) => p.cobertura_monto));
     const esencial = planes
       .filter((p) => p.cobertura_monto === menorCob)
-      .sort((a, b) => a.prima_mensual - b.prima_mensual)[0];
+      .sort((a, b) => a.prima_anual - b.prima_anual)[0];
     const prima =
       menorCob !== mayorCob
-        ? planes.filter((p) => p.cobertura_monto === mayorCob).sort((a, b) => a.prima_mensual - b.prima_mensual)[0]
+        ? planes.filter((p) => p.cobertura_monto === mayorCob).sort((a, b) => a.prima_anual - b.prima_anual)[0]
         : null;
     const porAseg = new Map<string, Plan[]>();
     for (const p of planes) porAseg.set(p.aseguradora_nombre, [...(porAseg.get(p.aseguradora_nombre) ?? []), p]);
@@ -71,7 +73,7 @@ export default function Compartida() {
 
   const wa = (texto: string) => (tel ? `https://wa.me/${tel}?text=${encodeURIComponent(texto)}` : undefined);
   const textoOpcion = (p: Plan) =>
-    `Hola, soy ${cliente}. Me interesa la opción ${p.aseguradora_nombre} (${p.plan_nombre}) con cobertura de USD ${p.cobertura_monto.toLocaleString("es-VE")} a ${usd(p.prima_mensual)}/mes, de la cotización #${datos.numero}.`;
+    `Hola, soy ${cliente}. Me interesa la opción ${p.aseguradora_nombre} (${p.plan_nombre}) con cobertura de USD ${p.cobertura_monto.toLocaleString("es-VE")} a ${usd(cp(p).valor)}${cp(p).periodo}, de la cotización #${datos.numero}.`;
   const textoInfo = `Hola, soy ${cliente}. Quisiera más información sobre mi cotización #${datos.numero}.`;
 
   const Boton = ({ p, clase, texto }: { p: Plan; clase: string; texto: string }) => {
@@ -136,7 +138,7 @@ export default function Compartida() {
             </div>
             <div className="space-y-3 bg-slate-800 p-4">
               <p className="text-center text-4xl font-extrabold">
-                {usd(calc.masBarata.prima_mensual)} <span className="text-sm font-normal text-slate-300">/mes</span>
+                {usd(cp(calc.masBarata).valor)} <span className="text-sm font-normal text-slate-300">{cp(calc.masBarata).periodo}</span>
               </p>
               <Boton p={calc.masBarata} clase="bg-emerald-500 hover:bg-emerald-600" texto="Asegurarme ahora →" />
             </div>
@@ -152,7 +154,7 @@ export default function Compartida() {
                 <p className="text-xs text-slate-600">Lo justo y necesario para estar protegido</p>
                 <p className="text-[10px] text-slate-400">Cobertura USD {calc.esencial.cobertura_monto.toLocaleString("es-VE")}</p>
                 <p className="text-xl font-extrabold">
-                  {usd(calc.esencial.prima_mensual)} <span className="text-[10px] font-normal text-slate-400">/mes</span>
+                  {usd(cp(calc.esencial).valor)} <span className="text-[10px] font-normal text-slate-400">{cp(calc.esencial).periodo}</span>
                 </p>
                 <p className="text-[10px] text-slate-400">{calc.esencial.aseguradora_nombre}</p>
                 <Boton p={calc.esencial} clase="bg-emerald-500 hover:bg-emerald-600 !py-1.5 !text-xs" texto="Elegir Plan Esencial →" />
@@ -165,7 +167,7 @@ export default function Compartida() {
                   <p className="text-xs text-slate-600">Máxima tranquilidad y protección</p>
                   <p className="text-[10px] text-slate-400">Cobertura USD {calc.prima.cobertura_monto.toLocaleString("es-VE")}</p>
                   <p className="text-xl font-extrabold">
-                    {usd(calc.prima.prima_mensual)} <span className="text-[10px] font-normal text-slate-400">/mes</span>
+                    {usd(cp(calc.prima).valor)} <span className="text-[10px] font-normal text-slate-400">{cp(calc.prima).periodo}</span>
                   </p>
                   <p className="text-[10px] text-slate-400">{calc.prima.aseguradora_nombre}</p>
                   <Boton p={calc.prima} clase="bg-fuchsia-500 hover:bg-fuchsia-600 !py-1.5 !text-xs" texto="Obtener Prot. Prima →" />
@@ -198,7 +200,7 @@ export default function Compartida() {
                         )}
                       </div>
                       <p className="text-2xl font-extrabold">
-                        {usd(p.prima_mensual)} <span className="text-[10px] font-normal text-slate-400">/mes</span>
+                        {usd(cp(p).valor)} <span className="text-[10px] font-normal text-slate-400">{cp(p).periodo}</span>
                       </p>
                     </div>
                     <details className="border-t border-dashed border-slate-200 pt-2 text-xs text-slate-600">
@@ -212,18 +214,17 @@ export default function Compartida() {
                             <span>{x.base === null ? "Grupo" : usd(x.base + x.addons)}/año</span>
                           </li>
                         ))}
-                        <li className="flex justify-between border-t border-slate-100 pt-1 font-semibold">
-                          <span>Anual</span>
-                          <span>{usd(p.prima_anual)}</span>
-                        </li>
-                        <li className="flex justify-between">
-                          <span>Semestral</span>
-                          <span>{usd(p.prima_semestral)}</span>
-                        </li>
-                        <li className="flex justify-between">
-                          <span>Trimestral</span>
-                          <span>{usd(p.prima_trimestral)}</span>
-                        </li>
+                        {cuotasDelPlan(p.prima_anual, p.desglose?.cuotas).map((c, k) => (
+                          <li
+                            key={c.clave}
+                            className={`flex justify-between ${k === 0 ? "border-t border-slate-100 pt-1 font-semibold" : ""}`}
+                          >
+                            <span>{c.nombre}</span>
+                            <span>
+                              {c.inicial !== undefined ? `${usd(c.inicial)} + 4×${usd(c.valor)}` : usd(c.valor)}
+                            </span>
+                          </li>
+                        ))}
                       </ul>
                       {p.addons.length > 0 && <p className="mt-1 text-slate-400">Incluye: {p.addons.join(", ")}</p>}
                     </details>

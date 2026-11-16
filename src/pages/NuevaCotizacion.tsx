@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
   calcularOpciones,
+  cuotaPrincipal,
+  cuotasDelPlan,
   type AddonCat,
   type Opcion,
   type PlanCalc,
@@ -33,6 +35,20 @@ type ClienteDB = {
 };
 type AseguradoUI = { nombre: string; edad: string; sexo: "M" | "F" };
 type Grupo = "individual" | "pareja" | "familiar";
+
+const CORTO: Record<string, string> = { anual: "Anual", semestral: "Sem.", cuatrimestral: "Cuatr.", trimestral: "Trim.", mensual: "Mens." };
+/** Las demás formas de pago del plan (la principal va destacada arriba). */
+const textoOtrasCuotas = (o: Opcion) => {
+  const p = cuotaPrincipal(o.anual, o.cuotas);
+  return cuotasDelPlan(o.anual, o.cuotas)
+    .filter((c) => c.clave !== p.clave)
+    .map((c) =>
+      c.inicial !== undefined
+        ? `Inicial ${usd(c.inicial)} + 4×${usd(c.valor)}`
+        : `${CORTO[c.clave] ?? c.nombre} ${usd(c.valor)}`,
+    )
+    .join(" · ");
+};
 
 export const usd = (n: number) => `$${Number(n).toLocaleString("es-VE")}`;
 
@@ -84,7 +100,7 @@ export default function NuevaCotizacion() {
         supabase
           .from("planes")
           .select(
-            "id,nombre,tipo,modalidad,grupo_min,grupo_max,activo,recomendado,mas_vendido,aseguradoras(id,nombre,activa,renovacion_habilitada,recargo_renovacion_pct,logo_url),plan_addons(addon_id,edad_min,edad_max)",
+            "id,nombre,tipo,modalidad,grupo_min,grupo_max,activo,recomendado,mas_vendido,aseguradoras(id,nombre,activa,renovacion_habilitada,recargo_renovacion_pct,logo_url),plan_addons(addon_id,edad_min,edad_max),cuotas",
           ),
       ]);
       if (t.error || a.error || p.error) {
@@ -382,7 +398,14 @@ export default function NuevaCotizacion() {
           prima_semestral: o.semestral,
           prima_trimestral: o.trimestral,
           prima_mensual: o.mensual,
-          desglose: { base: o.base, addons: o.addons, recargo: o.recargo, porPersona: o.porPersona, tipo: o.tipo },
+          desglose: {
+            base: o.base,
+            addons: o.addons,
+            recargo: o.recargo,
+            porPersona: o.porPersona,
+            tipo: o.tipo,
+            cuotas: o.cuotas,
+          },
         })),
       );
       if (p.error) throw new Error(p.error.message);
@@ -895,11 +918,11 @@ export default function NuevaCotizacion() {
                         </div>
                         <div className="text-right">
                           <p className="text-2xl font-bold">
-                            {usd(o.mensual)}
-                            <span className="text-xs font-normal text-zinc-400">/mes</span>
+                            {usd(cuotaPrincipal(o.anual, o.cuotas).valor)}
+                            <span className="text-xs font-normal text-zinc-400">{cuotaPrincipal(o.anual, o.cuotas).periodo}</span>
                           </p>
                           <p className="text-xs text-zinc-400">
-                            Anual {usd(o.anual)} · Sem. {usd(o.semestral)} · Trim. {usd(o.trimestral)}
+                            {textoOtrasCuotas(o)}
                           </p>
                         </div>
                       </div>
@@ -1024,11 +1047,11 @@ export default function NuevaCotizacion() {
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold">
-                      {usd(o.mensual)}
-                      <span className="text-xs font-normal text-zinc-400">/mes</span>
+                      {usd(cuotaPrincipal(o.anual, o.cuotas).valor)}
+                      <span className="text-xs font-normal text-zinc-400">{cuotaPrincipal(o.anual, o.cuotas).periodo}</span>
                     </p>
                     <p className="text-xs text-zinc-400">
-                      Anual {usd(o.anual)} · Sem. {usd(o.semestral)} · Trim. {usd(o.trimestral)}
+                      {textoOtrasCuotas(o)}
                     </p>
                   </div>
                 </div>

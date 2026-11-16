@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
+import { CUOTAS, CUOTAS_BASE } from "../lib/calculo";
 import { Aviso, Boton, Campo, Casilla, Seccion, inputChico, inputCls, numero, type Mensaje } from "../components/ui";
 
 const TIPOS: [string, string][] = [
@@ -22,6 +23,7 @@ type PlanDB = {
   recomendado: boolean;
   mas_vendido: boolean;
   activo: boolean;
+  cuotas?: string[] | null;
   aseguradoras: { id: string; nombre: string } | null;
 };
 type TarifaDB = {
@@ -49,6 +51,7 @@ export default function PlanEditor() {
 
   // formularios
   const [d, setD] = useState({ nombre: "", tipo: "hcm", modalidad: "por_persona", gmin: "", gmax: "" });
+  const [cuotas, setCuotas] = useState<string[]>(CUOTAS_BASE);
   const [flags, setFlags] = useState({ recomendado: false, mas_vendido: false, activo: true });
   const [cfg, setCfg] = useState<Record<string, CfgAddon>>({});
   const [ben, setBen] = useState<Record<string, string>>({});
@@ -103,6 +106,7 @@ export default function PlanEditor() {
       gmin: pl.grupo_min === null ? "" : String(pl.grupo_min),
       gmax: pl.grupo_max === null ? "" : String(pl.grupo_max),
     });
+    setCuotas(pl.cuotas && pl.cuotas.length > 0 ? pl.cuotas : CUOTAS_BASE);
     setFlags({ recomendado: pl.recomendado, mas_vendido: pl.mas_vendido, activo: pl.activo });
 
     const nuevoCfg: Record<string, CfgAddon> = {};
@@ -156,6 +160,10 @@ export default function PlanEditor() {
       setMsgDatos({ tipo: "error", texto: "Indica el tamaño mínimo y máximo del grupo." });
       return;
     }
+    if (cuotas.length === 0) {
+      setMsgDatos({ tipo: "error", texto: "Elige al menos una forma de pago (cuotas)." });
+      return;
+    }
     const r = await supabase
       .from("planes")
       .update({
@@ -164,6 +172,7 @@ export default function PlanEditor() {
         modalidad: d.modalidad,
         grupo_min: porGrupo ? gmin : null,
         grupo_max: porGrupo ? gmax : null,
+        cuotas,
         ...flags,
       })
       .eq("id", id!);
@@ -307,6 +316,22 @@ export default function PlanEditor() {
               </Campo>
             </div>
           )}
+        </div>
+        <div>
+          <p className="mb-2 text-sm text-zinc-400">Cuotas disponibles en este plan</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {CUOTAS.map((c) => (
+              <Casilla
+                key={c.clave}
+                etiqueta={c.nombre}
+                checked={cuotas.includes(c.clave)}
+                onChange={(on) => setCuotas(on ? [...cuotas, c.clave] : cuotas.filter((x) => x !== c.clave))}
+              />
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-zinc-500">
+            Son las formas de pago que se muestran en la cotización y el PDF de este plan.
+          </p>
         </div>
         <div className="flex flex-wrap gap-6">
           <Casilla

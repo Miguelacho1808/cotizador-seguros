@@ -5,17 +5,6 @@ import { useAuth } from "../lib/auth";
 import SubirLogo from "../components/SubirLogo";
 import { Aviso, Boton, Campo, Casilla, Seccion, inputCls, numero, type Mensaje } from "../components/ui";
 
-const CUOTAS: [string, string][] = [
-  ["anual", "Anual"],
-  ["semestral", "Semestral"],
-  ["cuatrimestral", "Cuatrimestral"],
-  ["trimestral", "Trimestral"],
-  ["mensual", "Mensual"],
-  ["10_cuotas", "10 cuotas"],
-  ["8_cuotas", "8 cuotas"],
-  ["5_cuotas", "5 cuotas"],
-  ["inicial_40_4", "Inicial 40% + 4 cuotas"],
-];
 
 const ESTATUS: [string, string][] = [
   ["por_integrar", "Por integrar"],
@@ -58,7 +47,6 @@ export default function AseguradoraDetalle() {
   const { perfil } = useAuth();
   const navigate = useNavigate();
   const [f, setF] = useState<Record<string, string> | null>(null);
-  const [cuotas, setCuotas] = useState<string[]>([]);
   const [logo, setLogo] = useState<string | null>(null);
   const [activa, setActiva] = useState(true);
   const [renov, setRenov] = useState(false);
@@ -87,7 +75,6 @@ export default function AseguradoraDetalle() {
     const valores: Record<string, string> = { estatus_integracion: s("estatus_integracion") };
     for (const k of [...TEXTO, ...NUMEROS]) valores[k] = s(k);
     setF(valores);
-    setCuotas((r.cuotas as string[]) ?? []);
     setLogo((r.logo_url as string | null) ?? null);
     setActiva(Boolean(r.activa));
     setRenov(Boolean(r.renovacion_habilitada));
@@ -125,7 +112,6 @@ export default function AseguradoraDetalle() {
     payload.orden = numero(f.orden) ?? 0;
     payload.recargo_renovacion_pct = numero(f.recargo_renovacion_pct) ?? 0;
     payload.estatus_integracion = f.estatus_integracion;
-    payload.cuotas = cuotas;
     payload.activa = activa;
     payload.renovacion_habilitada = renov;
 
@@ -309,20 +295,6 @@ export default function AseguradoraDetalle() {
               className={inputCls}
             />
           </Campo>
-        </div>
-
-        <div>
-          <p className="mb-2 text-sm text-zinc-400">Cuotas disponibles</p>
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            {CUOTAS.map(([v, n]) => (
-              <Casilla
-                key={v}
-                etiqueta={n}
-                checked={cuotas.includes(v)}
-                onChange={(on) => setCuotas(on ? [...cuotas, v] : cuotas.filter((c) => c !== v))}
-              />
-            ))}
-          </div>
         </div>
 
         <div className="flex flex-wrap items-end gap-6">
