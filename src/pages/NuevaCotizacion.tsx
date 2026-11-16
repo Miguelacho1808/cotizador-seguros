@@ -79,7 +79,7 @@ export default function NuevaCotizacion() {
         supabase
           .from("planes")
           .select(
-            "id,nombre,tipo,modalidad,grupo_min,grupo_max,activo,recomendado,mas_vendido,aseguradoras(id,nombre,activa,renovacion_habilitada,recargo_renovacion_pct),plan_addons(addon_id,edad_min,edad_max)",
+            "id,nombre,tipo,modalidad,grupo_min,grupo_max,activo,recomendado,mas_vendido,aseguradoras(id,nombre,activa,renovacion_habilitada,recargo_renovacion_pct,logo_url),plan_addons(addon_id,edad_min,edad_max)",
           ),
       ]);
       if (t.error || a.error || p.error) {
@@ -188,6 +188,7 @@ export default function NuevaCotizacion() {
   );
 
   const elegidas = opciones.filter((o) => seleccion.includes(o.clave));
+  const logoDe = useMemo(() => new Map(planes.map((p) => [p.aseguradora.id, p.aseguradora.logo_url ?? null])), [planes]);
   const porAseguradora = useMemo(() => {
     const m = new Map<string, Opcion[]>();
     for (const o of opciones) m.set(o.aseguradora, [...(m.get(o.aseguradora) ?? []), o]);
@@ -729,7 +730,17 @@ export default function NuevaCotizacion() {
             {porAseguradora.map(([nombre, lista]) => (
               <div key={nombre} className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold">{nombre}</p>
+                  {logoDe.get(lista[0].aseguradora_id) ? (
+                    <div className="flex h-10 w-32 items-center justify-center rounded-md bg-white px-2 py-1">
+                      <img
+                        src={logoDe.get(lista[0].aseguradora_id)!}
+                        alt={nombre}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <p className="font-semibold">{nombre}</p>
+                  )}
                   <button
                     onClick={() => alternarEmpresa(lista)}
                     disabled={!lista.every((o) => seleccion.includes(o.clave)) && !puedeAgregar(lista[0])}

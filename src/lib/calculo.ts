@@ -40,6 +40,7 @@ export type PlanCalc = {
     activa: boolean;
     renovacion_habilitada: boolean;
     recargo_renovacion_pct: number;
+    logo_url?: string | null;
   };
   plan_addons: { addon_id: string; edad_min: number | null; edad_max: number | null }[];
 };
