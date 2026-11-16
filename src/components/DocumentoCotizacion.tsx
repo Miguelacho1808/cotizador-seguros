@@ -16,6 +16,7 @@ export type PlanDoc = {
   desglose?: {
     porPersona?: { nombre: string; edad: number; base: number | null; addons: number }[];
     cuotas?: string[];
+    destacado?: boolean;
   } | null;
   beneficios: { nombre: string; estado: string }[];
   logo_url?: string | null;

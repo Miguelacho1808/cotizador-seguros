@@ -86,6 +86,7 @@ export default function NuevaCotizacion() {
   const [addonsEmpresa, setAddonsEmpresa] = useState<Record<string, string[]>>({});
   const [dedElegido, setDedElegido] = useState<Record<string, number>>({});
   const [seleccion, setSeleccion] = useState<string[]>([]);
+  const [destacadas, setDestacadas] = useState<string[]>([]);
 
   const [msg, setMsg] = useState<Mensaje | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -240,6 +241,15 @@ export default function NuevaCotizacion() {
     });
   };
 
+  const porEmpresaResumen = useMemo(() => {
+    const m = new Map<string, { nombre: string; empId: string; lista: Opcion[] }>();
+    for (const o of elegidas) {
+      const g = m.get(o.aseguradora_id) ?? { nombre: o.aseguradora, empId: o.aseguradora_id, lista: [] };
+      g.lista.push(o);
+      m.set(o.aseguradora_id, g);
+    }
+    return [...m.values()].map((g) => ({ ...g, lista: g.lista.sort((a, b) => a.cobertura - b.cobertura || a.anual - b.anual) }));
+  }, [elegidas]);
   const logoDe = useMemo(() => new Map(planes.map((p) => [p.aseguradora.id, p.aseguradora.logo_url ?? null])), [planes]);
   const porAseguradora = useMemo(() => {
     const m = new Map<
@@ -405,6 +415,7 @@ export default function NuevaCotizacion() {
             porPersona: o.porPersona,
             tipo: o.tipo,
             cuotas: o.cuotas,
+            destacado: destacadas.includes(o.clave),
           },
         })),
       );
@@ -1016,7 +1027,7 @@ export default function NuevaCotizacion() {
       )}
 
       {paso === 5 && cliente && (
-        <div className="mx-auto w-full max-w-3xl space-y-4">
+        <div className="mx-auto w-full max-w-5xl space-y-4">
           <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-semibold">
@@ -1034,27 +1045,67 @@ export default function NuevaCotizacion() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {elegidas.map((o) => (
-              <div key={o.clave} className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">{o.aseguradora}</p>
-                    <p className="text-sm text-zinc-400">
-                      {o.plan} · {usd(o.cobertura)}
-                      {o.deducible > 0 && ` · deducible ${usd(o.deducible)}`}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">
-                      {usd(cuotaPrincipal(o.anual, o.cuotas).valor)}
-                      <span className="text-xs font-normal text-zinc-400">{cuotaPrincipal(o.anual, o.cuotas).periodo}</span>
-                    </p>
-                    <p className="text-xs text-zinc-400">
-                      {textoOtrasCuotas(o)}
-                    </p>
-                  </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {porEmpresaResumen.map((g) => (
+              <div key={g.nombre} className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+                <div className="border-b border-zinc-800 p-3">
+                  {logoDe.get(g.empId) ? (
+                    <span className="inline-block rounded bg-white p-1">
+                      <img src={logoDe.get(g.empId)!} alt={g.nombre} className="h-10 max-w-[200px] object-contain" />
+                    </span>
+                  ) : (
+                    <p className="font-semibold">{g.nombre}</p>
+                  )}
                 </div>
+                {g.lista.map((o) => {
+                  const cq = cuotaPrincipal(o.anual, o.cuotas);
+                  const star = destacadas.includes(o.clave);
+                  return (
+                    <div key={o.clave} className="space-y-1.5 border-b border-zinc-800 p-3 last:border-b-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDestacadas((d) => (d.includes(o.clave) ? d.filter((x) => x !== o.clave) : [...d, o.clave]))
+                              }
+                              aria-label={star ? "Quitar recomendación" : "Recomendar"}
+                              title={star ? "Quitar recomendación" : "Marcar como recomendada"}
+                              className={`text-lg leading-none ${star ? "text-amber-400" : "text-zinc-500 hover:text-amber-300"}`}
+                            >
+                              {star ? "★" : "☆"}
+                            </button>
+                            <span className="text-sm font-bold">{usd(o.cobertura)}</span>
+                          </div>
+                          <p className="pl-6 text-xs text-zinc-400">
+                            {o.plan}
+                            {o.deducible > 0 && ` · deducible ${usd(o.deducible)}`}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-xl font-bold">
+                          {usd(cq.valor)}
+                          <span className="text-xs font-normal text-zinc-400">{cq.periodo}</span>
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-indigo-300">{textoOtrasCuotas(o)}</p>
+                      <dl className="divide-y divide-zinc-800 text-xs">
+                        <div className="flex justify-between py-1">
+                          <dt className="text-zinc-400">Total {o.tipo.toUpperCase()}</dt>
+                          <dd className="font-semibold">{usd(o.base)}/año</dd>
+                        </div>
+                        {o.addons.map((x) => (
+                          <div key={x.addon_id} className="flex justify-between py-1">
+                            <dt className="text-zinc-400">{x.nombre}</dt>
+                            <dd className={x.incluido ? "font-semibold text-emerald-400" : "font-semibold"}>
+                              {x.incluido ? "Incluido" : `${usd(x.total)}/año`}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>

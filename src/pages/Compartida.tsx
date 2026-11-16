@@ -191,7 +191,10 @@ export default function Compartida() {
                   <div key={p.id} className="space-y-2 rounded-xl border border-slate-200 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-bold">USD {p.cobertura_monto.toLocaleString("es-VE")}</p>
+                        <p className="text-sm font-bold">
+                          {p.desglose?.destacado && <span className="mr-1 text-amber-500" title="Recomendada">★</span>}
+                          USD {p.cobertura_monto.toLocaleString("es-VE")}
+                        </p>
                         <span className="inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
                           {p.plan_nombre}
                         </span>
