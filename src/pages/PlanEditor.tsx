@@ -64,7 +64,7 @@ export default function PlanEditor() {
   const cargar = useCallback(async () => {
     const [p, ad, pa, bn, pb, tf] = await Promise.all([
       supabase.from("planes").select("*, aseguradoras(id,nombre)").eq("id", id!).single(),
-      supabase.from("addons").select("id,nombre,orden").order("orden"),
+      supabase.from("addons").select("id,nombre,orden").eq("activo", true).order("orden"),
       supabase.from("plan_addons").select("addon_id,edad_min,edad_max,suma_asegurada").eq("plan_id", id!),
       supabase.from("beneficios").select("id,nombre,orden").order("orden"),
       supabase.from("plan_beneficios").select("beneficio_id,estado").eq("plan_id", id!),
@@ -168,6 +168,41 @@ export default function PlanEditor() {
       })
       .eq("id", id!);
     setMsgDatos(r.error ? { tipo: "error", texto: r.error.message } : { tipo: "ok", texto: "Guardado." });
+  };
+
+  const agregarAddon = async () => {
+    setMsgAddons(null);
+    const nombre = window.prompt("Nombre del nuevo add-on (ej. Odontología)")?.trim();
+    if (!nombre) return;
+    if (addons.some((a) => a.nombre.toLowerCase() === nombre.toLowerCase())) {
+      setMsgAddons({ tipo: "error", texto: `"${nombre}" ya existe en la lista.` });
+      return;
+    }
+    // Si existe archivado con ese nombre, se reactiva (conserva sus precios)
+    const previo = await supabase.from("addons").select("id,nombre,orden,activo").ilike("nombre", nombre).maybeSingle();
+    if (previo.error) {
+      setMsgAddons({ tipo: "error", texto: previo.error.message });
+      return;
+    }
+    let fila = previo.data as { id: string; nombre: string; orden: number; activo: boolean } | null;
+    if (fila) {
+      const r = await supabase.from("addons").update({ activo: true }).eq("id", fila.id);
+      if (r.error) {
+        setMsgAddons({ tipo: "error", texto: r.error.message });
+        return;
+      }
+    } else {
+      const orden = Math.max(0, ...addons.map((a) => a.orden)) + 1;
+      const r = await supabase.from("addons").insert({ nombre, orden }).select("id,nombre,orden,activo").single();
+      if (r.error) {
+        setMsgAddons({ tipo: "error", texto: r.error.message });
+        return;
+      }
+      fila = r.data as { id: string; nombre: string; orden: number; activo: boolean };
+    }
+    setAddons([...addons, { id: fila.id, nombre: fila.nombre, orden: fila.orden }].sort((a, b) => a.orden - b.orden));
+    setCfg({ ...cfg, [fila.id]: { on: false, emin: "", emax: "", sa: "" } });
+    setMsgAddons({ tipo: "ok", texto: `"${fila.nombre}" agregado. Actívalo en este plan y guarda; sus costos se cargan en la tabla de tarifas.` });
   };
 
   const guardarAddons = async () => {
@@ -347,8 +382,11 @@ export default function PlanEditor() {
             </tbody>
           </table>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Boton onClick={guardarAddons}>Guardar add-ons</Boton>
+          <Boton variante="secundario" onClick={agregarAddon}>
+            + Agregar add-on
+          </Boton>
           <Aviso mensaje={msgAddons} />
         </div>
       </Seccion>

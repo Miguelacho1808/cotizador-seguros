@@ -74,7 +74,8 @@ export default function NuevaCotizacion() {
     void (async () => {
       const [t, a, p] = await Promise.all([
         supabase.from("tarifas").select("cobertura_monto").eq("activa", true),
-        supabase.from("addons").select("id,nombre,orden,solo_sexo").order("orden"),
+        supabase.from("addons").select("id,nombre,orden,solo_sexo")
+          .eq("activo", true).order("orden"),
         supabase
           .from("planes")
           .select(
