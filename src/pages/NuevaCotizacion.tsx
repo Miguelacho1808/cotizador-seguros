@@ -63,6 +63,7 @@ export default function NuevaCotizacion() {
   const [cargandoTarifas, setCargandoTarifas] = useState(false);
   const [coberturas, setCoberturas] = useState<number[]>([100000]);
   const [addonsElegidos, setAddonsElegidos] = useState<string[]>([]);
+  const [addonsEmpresa, setAddonsEmpresa] = useState<Record<string, string[]>>({});
   const [dedElegido, setDedElegido] = useState<Record<string, number>>({});
   const [seleccion, setSeleccion] = useState<string[]>([]);
 
@@ -180,14 +181,37 @@ export default function NuevaCotizacion() {
             asegurados: aseguradosCalc,
             coberturas,
             addonsElegidos,
+            addonsPorAseguradora: addonsEmpresa,
             renovacion: tipoCot === "renovacion",
             deducibleElegido: dedElegido,
           })
         : [],
-    [paso, planes, tarifas, addonsCat, aseguradosCalc, coberturas, addonsElegidos, tipoCot, dedElegido],
+    [paso, planes, tarifas, addonsCat, aseguradosCalc, coberturas, addonsElegidos, addonsEmpresa, tipoCot, dedElegido],
   );
 
   const elegidas = opciones.filter((o) => seleccion.includes(o.clave));
+  // Add-ons con precio para cada aseguradora (según las tarifas cargadas de las sumas elegidas)
+  const addonsDisponibles = useMemo(() => {
+    const empDePlan = new Map(planes.map((p) => [p.id, p.aseguradora.id]));
+    const m = new Map<string, Set<string>>();
+    for (const t of tarifas) {
+      const emp = empDePlan.get(t.plan_id);
+      if (!emp) continue;
+      for (const x of t.tarifa_addons) {
+        if (x.incluido || (x.costo ?? 0) > 0) m.set(emp, (m.get(emp) ?? new Set<string>()).add(x.addon_id));
+      }
+    }
+    return m;
+  }, [planes, tarifas]);
+  const addonsDe = (empId: string) => addonsEmpresa[empId] ?? addonsElegidos;
+  const alternarAddonEmpresa = (empId: string, addonId: string) => {
+    const actual = addonsDe(empId);
+    setAddonsEmpresa({
+      ...addonsEmpresa,
+      [empId]: actual.includes(addonId) ? actual.filter((x) => x !== addonId) : [...actual, addonId],
+    });
+  };
+
   const logoDe = useMemo(() => new Map(planes.map((p) => [p.aseguradora.id, p.aseguradora.logo_url ?? null])), [planes]);
   const porAseguradora = useMemo(() => {
     const m = new Map<string, Opcion[]>();
@@ -682,7 +706,9 @@ export default function NuevaCotizacion() {
                   </button>
                 ))}
               </div>
-              <p className="pt-2 text-xs uppercase tracking-wide text-zinc-500">Coberturas adicionales (add-ons)</p>
+              <p className="pt-2 text-xs uppercase tracking-wide text-zinc-500">
+                Add-ons iniciales para todas las empresas
+              </p>
               <div className="flex flex-wrap gap-2">
                 {addonsCat.map((a) => (
                   <button
@@ -703,7 +729,7 @@ export default function NuevaCotizacion() {
                 ))}
               </div>
               <p className="text-xs text-zinc-500">
-                Los add-ons se cobran por persona, solo a quienes estén dentro del rango de edad del add-on. Maternidad solo se cobra a asegurados de sexo femenino.
+                Cada empresa puede ajustar sus add-ons en su propia tarjeta (ej. Viajes en una sí y en otra no). Se cobran por persona; Maternidad solo a asegurados de sexo femenino.
               </p>
             </div>
 
@@ -749,6 +775,30 @@ export default function NuevaCotizacion() {
                     {lista.every((o) => seleccion.includes(o.clave)) ? "Quitar empresa" : "Incluir todas"}
                   </button>
                 </div>
+                {(() => {
+                  const empId = lista[0].aseguradora_id;
+                  const disp = addonsCat.filter((a) => addonsDisponibles.get(empId)?.has(a.id));
+                  if (disp.length === 0) return null;
+                  return (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-zinc-500">Add-ons:</span>
+                      {disp.map((a) => {
+                        const on = addonsDe(empId).includes(a.id);
+                        return (
+                          <button
+                            key={a.id}
+                            onClick={() => alternarAddonEmpresa(empId, a.id)}
+                            className={`rounded-md border px-2 py-0.5 text-xs ${
+                              on ? "border-indigo-400 bg-indigo-500/20" : "border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+                            }`}
+                          >
+                            {a.nombre}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
                 {lista.map((o) => {
                   const marcada = seleccion.includes(o.clave);
                   return (

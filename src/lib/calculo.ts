@@ -111,6 +111,8 @@ export function calcularOpciones(params: {
   asegurados: Asegurado[];
   coberturas: number[];
   addonsElegidos: string[];
+  /** Add-ons elegidos por aseguradora (id de aseguradora → add-ons); sustituye a `addonsElegidos` para esa empresa. */
+  addonsPorAseguradora?: Record<string, string[]>;
   renovacion: boolean;
   deducibleElegido?: Record<string, number>;
 }): Opcion[] {
@@ -166,7 +168,8 @@ export function calcularOpciones(params: {
 
       // Add-ons por persona
       const lineas: LineaAddon[] = [];
-      for (const addonId of addonsElegidos) {
+      const elegidosEmpresa = params.addonsPorAseguradora?.[plan.aseguradora.id] ?? addonsElegidos;
+      for (const addonId of elegidosEmpresa) {
         let total = 0;
         let personas = 0;
         let disponible = false;
