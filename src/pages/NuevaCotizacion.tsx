@@ -741,31 +741,6 @@ export default function NuevaCotizacion() {
                   </button>
                 ))}
               </div>
-              <p className="pt-2 text-xs uppercase tracking-wide text-zinc-500">
-                Add-ons iniciales para todas las empresas
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {addonsCat.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() =>
-                      setAddonsElegidos((prev) =>
-                        prev.includes(a.id) ? prev.filter((x) => x !== a.id) : [...prev, a.id],
-                      )
-                    }
-                    className={`rounded-lg border px-3 py-1 text-sm ${
-                      addonsElegidos.includes(a.id)
-                        ? "border-indigo-400 bg-indigo-500/20"
-                        : "border-zinc-700 text-zinc-400 hover:bg-zinc-800"
-                    }`}
-                  >
-                    {a.nombre}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-zinc-500">
-                Cada empresa puede ajustar sus add-ons en su propia tarjeta (ej. Viajes en una sí y en otra no). Se cobran por persona; Maternidad solo a asegurados de sexo femenino.
-              </p>
             </div>
 
             <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm">
