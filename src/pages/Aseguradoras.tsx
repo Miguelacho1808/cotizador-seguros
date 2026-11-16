@@ -7,6 +7,7 @@ type Plan = { id: string; nombre: string; tipo: string; activo: boolean };
 type Aseguradora = { id: string; nombre: string; logo_url: string | null; ciudad: string | null; activa: boolean; planes: Plan[] };
 
 const TIPO: Record<string, string> = { hcm: "HCM", emca: "Emergencia médica", amy: "Adulto mayor" };
+const ORDEN_TIPOS = ["hcm", "emca", "amy"];
 
 export default function Aseguradoras() {
   const { perfil } = useAuth();
@@ -72,22 +73,34 @@ export default function Aseguradoras() {
                 </Link>
               )}
             </div>
-            <ul className="space-y-1 text-sm">
-              {a.planes.map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-2">
-                  {esAdmin ? (
-                    <Link to={`/planes/${p.id}`} className="hover:text-indigo-300 hover:underline">
-                      {p.nombre}
-                    </Link>
-                  ) : (
-                    <span>{p.nombre}</span>
-                  )}
-                  <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs text-indigo-300">
-                    {TIPO[p.tipo] ?? p.tipo}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-3">
+              {ORDEN_TIPOS.map((tipo) => {
+                const deTipo = a.planes.filter((p) => p.tipo === tipo).sort((x, y) => x.nombre.localeCompare(y.nombre));
+                if (deTipo.length === 0) return null;
+                return (
+                  <div key={tipo} className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-indigo-300">
+                      {TIPO[tipo] ?? tipo} <span className="text-zinc-500">({deTipo.length})</span>
+                    </p>
+                    <ul className="space-y-1 text-sm">
+                      {deTipo.map((p) => (
+                        <li key={p.id} className="flex items-center justify-between gap-2 rounded-md bg-zinc-800/50 px-2 py-1">
+                          {esAdmin ? (
+                            <Link to={`/planes/${p.id}`} className="hover:text-indigo-300 hover:underline">
+                              {p.nombre}
+                            </Link>
+                          ) : (
+                            <span>{p.nombre}</span>
+                          )}
+                          {!p.activo && <span className="text-xs text-zinc-500">Inactivo</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+              {a.planes.length === 0 && <p className="text-sm text-zinc-500">Sin planes.</p>}
+            </div>
           </div>
         ))}
       </div>
