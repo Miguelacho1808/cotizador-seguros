@@ -221,11 +221,11 @@ export default function NuevaCotizacion() {
   const porAseguradora = useMemo(() => {
     const m = new Map<
       string,
-      { nombre: string; empId: string; lista: Opcion[]; planes: { id: string; nombre: string }[] }
+      { nombre: string; empId: string; lista: Opcion[]; planes: { id: string; nombre: string; tipo: string }[] }
     >();
     for (const o of opcionesTipo) {
       const g = m.get(o.aseguradora) ?? { nombre: o.aseguradora, empId: o.aseguradora_id, lista: [], planes: [] };
-      if (!g.planes.some((p) => p.id === o.plan_id)) g.planes.push({ id: o.plan_id, nombre: o.plan });
+      if (!g.planes.some((p) => p.id === o.plan_id)) g.planes.push({ id: o.plan_id, nombre: o.plan, tipo: o.tipo });
       if (!planesOcultos.includes(o.plan_id)) g.lista.push(o);
       m.set(o.aseguradora, g);
     }
@@ -807,32 +807,40 @@ export default function NuevaCotizacion() {
                     {lista.every((o) => seleccion.includes(o.clave)) ? "Quitar empresa" : "Incluir todas"}
                   </button>
                 </div>
-                {chipsPlanes.length > 1 && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs text-zinc-500">Planes:</span>
-                    {chipsPlanes.map((pl) => {
-                      const on = !planesOcultos.includes(pl.id);
-                      return (
-                        <button
-                          key={pl.id}
-                          onClick={() =>
-                            setPlanesOcultos(on ? [...planesOcultos, pl.id] : planesOcultos.filter((x) => x !== pl.id))
-                          }
-                          className={`rounded-md border px-2 py-0.5 text-xs ${
-                            on ? "border-emerald-400 bg-emerald-500/20" : "border-zinc-700 text-zinc-500 hover:bg-zinc-800"
-                          }`}
-                        >
-                          {pl.nombre}
-                        </button>
-                      );
-                    })}
-                    {lista.length > 0 && chipsPlanes.some((pl) => planesOcultos.includes(pl.id)) && (
-                      <span className="text-xs text-amber-400">
-                        {chipsPlanes.filter((pl) => !planesOcultos.includes(pl.id)).length} de {chipsPlanes.length} planes
-                      </span>
-                    )}
-                  </div>
-                )}
+                <p className="-mt-1 text-xs text-zinc-500">
+                  {chipsPlanes.length} {chipsPlanes.length === 1 ? "plan" : "planes"}
+                  {chipsPlanes.some((pl) => planesOcultos.includes(pl.id)) && (
+                    <span className="ml-2 text-amber-400">
+                      · {chipsPlanes.filter((pl) => !planesOcultos.includes(pl.id)).length} activos
+                    </span>
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {chipsPlanes.map((pl) => {
+                    const on = !planesOcultos.includes(pl.id);
+                    const color =
+                      pl.tipo === "emca"
+                        ? "border-red-400 bg-red-500/15 text-red-200"
+                        : pl.tipo === "amy"
+                          ? "border-amber-400 bg-amber-500/15 text-amber-200"
+                          : "border-indigo-400 bg-indigo-500/20 text-indigo-200";
+                    return (
+                      <button
+                        key={pl.id}
+                        onClick={() =>
+                          setPlanesOcultos(on ? [...planesOcultos, pl.id] : planesOcultos.filter((x) => x !== pl.id))
+                        }
+                        aria-pressed={on}
+                        className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                          on ? color : "border-zinc-700 text-zinc-500 hover:bg-zinc-800"
+                        }`}
+                      >
+                        {on ? "✓ " : ""}
+                        {pl.nombre}
+                      </button>
+                    );
+                  })}
+                </div>
                 {(() => {
                   const disp = addonsCat.filter((a) => addonsDisponibles.get(empId)?.has(a.id));
                   if (disp.length === 0) return null;
@@ -900,6 +908,17 @@ export default function NuevaCotizacion() {
                       )}
 
                       <ul className="space-y-0.5 text-xs">
+                        {o.porPersona.length > 1 &&
+                          o.porPersona
+                            .filter((x) => x.base !== null)
+                            .map((x, i) => (
+                              <li key={i} className="flex justify-between">
+                                <span className="text-zinc-500">
+                                  {x.nombre} <span className="text-zinc-600">({x.edad})</span>
+                                </span>
+                                <span>{usd(x.base as number)}/año</span>
+                              </li>
+                            ))}
                         <li className="flex justify-between">
                           <span className="text-zinc-400">Total HCM</span>
                           <span>{usd(o.base)}/año</span>
