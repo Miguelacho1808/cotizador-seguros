@@ -329,7 +329,7 @@ export default function PlanEditor() {
 
       <Seccion
         titulo="Add-ons del plan"
-        ayuda="Activa los add-ons que ofrece este plan. Edad vacía = sin límite; quien esté fuera del rango no paga el add-on. Los costos por tarifa se editan abajo."
+        ayuda="Activa los add-ons que ofrece este plan. Los costos por tarifa se editan abajo."
       >
         <div className="overflow-x-auto rounded-lg border border-zinc-800">
           <table className="w-full text-left text-sm">
@@ -337,9 +337,6 @@ export default function PlanEditor() {
               <tr>
                 <th className="px-3 py-2">Add-on</th>
                 <th className="px-3 py-2">Ofrecido</th>
-                <th className="px-3 py-2">Edad desde</th>
-                <th className="px-3 py-2">Edad hasta</th>
-                <th className="px-3 py-2">Suma asegurada</th>
               </tr>
             </thead>
             <tbody>
@@ -348,33 +345,16 @@ export default function PlanEditor() {
                 const cambiar = (parcial: Partial<CfgAddon>) => setCfg({ ...cfg, [a.id]: { ...c, ...parcial } });
                 return (
                   <tr key={a.id} className="border-t border-zinc-800">
-                    <td className="px-3 py-2">{a.nombre}</td>
+                    <td className="px-3 py-2">
+                      {a.nombre}
+                      {c.on && (c.emin !== "" || c.emax !== "") && (
+                        <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-400">
+                          solo {c.emin || 0}–{c.emax || "+"} años
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2">
                       <input type="checkbox" checked={c.on} onChange={(e) => cambiar({ on: e.target.checked })} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        value={c.emin}
-                        disabled={!c.on}
-                        onChange={(e) => cambiar({ emin: e.target.value })}
-                        className={inputChico}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        value={c.emax}
-                        disabled={!c.on}
-                        onChange={(e) => cambiar({ emax: e.target.value })}
-                        className={inputChico}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        value={c.sa}
-                        disabled={!c.on}
-                        onChange={(e) => cambiar({ sa: e.target.value })}
-                        className={inputChico}
-                      />
                     </td>
                   </tr>
                 );
