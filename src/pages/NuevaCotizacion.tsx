@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
@@ -63,6 +63,8 @@ export default function NuevaCotizacion() {
   const [cargandoTarifas, setCargandoTarifas] = useState(false);
   const [coberturas, setCoberturas] = useState<number[]>([100000]);
   const [addonsElegidos, setAddonsElegidos] = useState<string[]>([]);
+  const carRef = useRef<HTMLDivElement>(null);
+  const [flechas, setFlechas] = useState({ izq: false, der: false });
   const [tiposActivos, setTiposActivos] = useState<string[]>(["hcm", "emca", "amy"]);
   const [planesOcultos, setPlanesOcultos] = useState<string[]>([]);
   const [addonsEmpresa, setAddonsEmpresa] = useState<Record<string, string[]>>({});
@@ -191,6 +193,11 @@ export default function NuevaCotizacion() {
     [paso, planes, tarifas, addonsCat, aseguradosCalc, coberturas, addonsElegidos, addonsEmpresa, tipoCot, dedElegido],
   );
 
+  const moverCarrusel = (dir: 1 | -1) => {
+    const el = carRef.current;
+    const tarjeta = el?.firstElementChild as HTMLElement | undefined;
+    if (el && tarjeta) el.scrollBy({ left: dir * (tarjeta.offsetWidth + 16) });
+  };
   const opcionesTipo = opciones.filter((o) => tiposActivos.includes(o.tipo));
   const visibles = opcionesTipo.filter((o) => !planesOcultos.includes(o.plan_id));
   const tiposDisponibles = [...new Set(opciones.map((o) => o.tipo))];
@@ -231,6 +238,21 @@ export default function NuevaCotizacion() {
     }
     return [...m.values()];
   }, [opcionesTipo, planesOcultos]);
+
+  // Flechas del carrusel: solo si hay tarjetas fuera de la vista
+  useEffect(() => {
+    const el = carRef.current;
+    if (!el) return;
+    const actualizar = () =>
+      setFlechas({ izq: el.scrollLeft > 4, der: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+    actualizar();
+    el.addEventListener("scroll", actualizar);
+    window.addEventListener("resize", actualizar);
+    return () => {
+      el.removeEventListener("scroll", actualizar);
+      window.removeEventListener("resize", actualizar);
+    };
+  }, [porAseguradora, paso]);
 
   // ---- validaciones por paso
   const edadesValidas = asegurados.every((a) => /^\d{1,3}$/.test(a.edad.trim()) && Number(a.edad) <= 120);
@@ -700,7 +722,7 @@ export default function NuevaCotizacion() {
       )}
 
       {paso === 4 && (
-        <div className="mx-auto w-full max-w-5xl space-y-5">
+        <div className="mx-auto w-full max-w-7xl space-y-5">
           <div className="grid gap-4 md:grid-cols-[1fr_300px]">
             <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
               <p className="text-xs uppercase tracking-wide text-zinc-500">
@@ -784,9 +806,26 @@ export default function NuevaCotizacion() {
           </p>
           <Aviso mensaje={msg} />
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="relative">
+            <button
+              onClick={() => moverCarrusel(-1)}
+              disabled={!flechas.izq}
+              aria-label="Anterior"
+              className="absolute -left-4 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800 text-lg shadow-lg hover:bg-zinc-700 disabled:hidden md:flex"
+            >
+              ‹
+            </button>
+            <button
+              onClick={() => moverCarrusel(1)}
+              disabled={!flechas.der}
+              aria-label="Siguiente"
+              className="absolute -right-4 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800 text-lg shadow-lg hover:bg-zinc-700 disabled:hidden md:flex"
+            >
+              ›
+            </button>
+          <div ref={carRef} className="flex snap-x snap-mandatory items-start gap-4 overflow-x-auto scroll-smooth pb-3">
             {porAseguradora.map(({ nombre, empId, lista, planes: chipsPlanes }) => (
-              <div key={nombre} className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+              <div key={nombre} className="w-full shrink-0 snap-start space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-4 md:w-[calc(50%-0.5rem)] xl:w-[calc(33.333%-0.667rem)]">
                 <div className="flex items-center justify-between gap-2">
                   {logoDe.get(empId) ? (
                     <div className="flex h-10 w-32 items-center justify-center rounded-md bg-white px-2 py-1">
@@ -956,6 +995,7 @@ export default function NuevaCotizacion() {
                 })}
               </div>
             ))}
+          </div>
           </div>
           {!cargandoTarifas && porAseguradora.length === 0 && (
             <p className="rounded-xl border border-zinc-800 p-6 text-center text-zinc-400">
