@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
+import { telefonoWhatsApp } from "../lib/telefono";
 import Avatar from "../components/Avatar";
 import { Aviso, Boton, Campo, Seccion, inputCls, type Mensaje } from "../components/ui";
 
 const TIPOS = ["image/png", "image/jpeg", "image/webp"];
 
-/** Deja solo dígitos con código de país; un número local venezolano (0424…) pasa a 58424… */
-function normalizarTelefono(t: string): string {
-  let d = t.replace(/\D/g, "");
-  if (d.length === 11 && d.startsWith("0")) d = `58${d.slice(1)}`;
-  return d;
-}
+const normalizarTelefono = telefonoWhatsApp;
 const mostrarTelefono = (d: string) => (d ? `+${d}` : "");
 
 function ClaveInput({ valor, onCambio }: { valor: string; onCambio: (v: string) => void }) {

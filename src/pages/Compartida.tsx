@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { telefonoWhatsApp } from "../lib/telefono";
 import DocumentoCotizacion, { type PlanDoc } from "../components/DocumentoCotizacion";
 
 const usd = (n: number) => `$${Number(n).toLocaleString("es-VE")}`;
@@ -65,7 +66,7 @@ export default function Compartida() {
     return <p className="p-8 text-center text-zinc-400">Esta cotización no existe o el enlace no es válido.</p>;
 
   const cliente = [datos.cliente?.nombre, datos.cliente?.apellido].filter(Boolean).join(" ");
-  const tel = (datos.asesor?.whatsapp ?? "").replace(/\D/g, "");
+  const tel = telefonoWhatsApp(datos.asesor?.whatsapp);
   const fecha = new Date(datos.fecha).toLocaleDateString("es-VE");
 
   const wa = (texto: string) => (tel ? `https://wa.me/${tel}?text=${encodeURIComponent(texto)}` : undefined);

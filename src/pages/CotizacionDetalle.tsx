@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { telefonoWhatsApp } from "../lib/telefono";
 import { Aviso, Boton, type Mensaje } from "../components/ui";
 import { ESTADOS, colorEstado } from "./Cotizaciones";
 import DocumentoCotizacion, { type PlanDoc } from "../components/DocumentoCotizacion";
@@ -114,7 +115,11 @@ export default function CotizacionDetalle() {
   };
 
   const whatsapp = () => {
-    const tel = (cot.clientes?.telefono ?? "").replace(/\D/g, "");
+    const tel = telefonoWhatsApp(cot.clientes?.telefono);
+    if (!tel) {
+      setMsg({ tipo: "error", texto: "El cliente no tiene teléfono guardado." });
+      return;
+    }
     const texto = `Hola ${cot.clientes?.nombre ?? ""}, te comparto tu cotización de seguro de salud: ${enlace}`;
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
   };
