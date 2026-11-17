@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import Avatar from "./Avatar";
+import BuscadorGlobal from "./BuscadorGlobal";
 
 const clase = ({ isActive }: { isActive: boolean }) =>
   `block rounded-lg px-3 py-2 text-sm ${
@@ -110,7 +111,12 @@ export default function Layout({ children }: { children: ReactNode }) {
         </button>
       </aside>
 
-      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 print:p-0">{children}</main>
+      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 print:p-0">
+        <div className="mb-5 print:hidden">
+          <BuscadorGlobal />
+        </div>
+        {children}
+      </main>
     </div>
   );
 }
