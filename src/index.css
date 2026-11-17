@@ -12,13 +12,59 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Tema claro del panel: se invierte la escala zinc y se oscurecen los acentos.
+   Se aplica solo dentro de .claro (el panel); el enlace público y el login no cambian. */
+.claro {
+  color-scheme: light;
+  background: #fafafa;
+  color: #18181b;
+  --color-zinc-50: #09090b;
+  --color-zinc-100: #18181b;
+  --color-zinc-200: #27272a;
+  --color-zinc-300: #3f3f46;
+  --color-zinc-400: #52525b;
+  --color-zinc-500: #71717a;
+  --color-zinc-600: #a1a1aa;
+  --color-zinc-700: #d4d4d8;
+  --color-zinc-800: #f4f4f5;
+  --color-zinc-900: #ffffff;
+  --color-zinc-950: #fafafa;
+  --color-indigo-200: #4338ca;
+  --color-indigo-300: #4f46e5;
+  --color-emerald-300: #047857;
+  --color-emerald-400: #059669;
+  --color-red-200: #991b1b;
+  --color-red-300: #b91c1c;
+  --color-red-400: #dc2626;
+  --color-amber-200: #92400e;
+  --color-amber-300: #b45309;
+  --color-amber-400: #d97706;
+  --color-sky-200: #0369a1;
+  --color-sky-300: #0284c7;
+}
+.claro .hover\:bg-white:hover {
+  background-color: #3f3f46;
+}
+/* La hoja del PDF es siempre blanca: recupera la escala zinc original */
+.claro .hoja {
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-400: #9f9fa9;
+  --color-zinc-500: #71717b;
+  --color-zinc-600: #52525c;
+  --color-zinc-800: #27272a;
+  color: #27272a;
+}
+
 /* Impresión / PDF de cotizaciones */
 @page {
   size: A4;
   margin: 0;
 }
 @media print {
-  body {
+  body,
+  .claro {
     background: #fff !important;
   }
   .hoja,

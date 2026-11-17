@@ -36,15 +36,15 @@ export function Lineas({ etiquetas, series, alto = 190 }: { etiquetas: string[];
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
       {marcas.map((m) => (
         <g key={m}>
-          <line x1={p.l} x2={W - p.r} y1={y(m)} y2={y(m)} stroke={REJILLA} />
-          <text x={p.l - 6} y={y(m) + 3} textAnchor="end" fontSize="10" fill={EJE}>
+          <line x1={p.l} x2={W - p.r} y1={y(m)} y2={y(m)} className="stroke-zinc-800" />
+          <text x={p.l - 6} y={y(m) + 3} textAnchor="end" fontSize="10" className="fill-zinc-500">
             {m}
           </text>
         </g>
       ))}
       {etiquetas.map((e, i) =>
         i % paso === 0 ? (
-          <text key={i} x={x(i)} y={H - 6} textAnchor="middle" fontSize="10" fill={EJE}>
+          <text key={i} x={x(i)} y={H - 6} textAnchor="middle" fontSize="10" className="fill-zinc-500">
             {e}
           </text>
         ) : null,
@@ -104,8 +104,8 @@ export function BarrasV({
         const m = Math.round(max * f);
         return (
           <g key={f}>
-            <line x1={p.l} x2={W - p.r} y1={y(m)} y2={y(m)} stroke={REJILLA} />
-            <text x={p.l - 6} y={y(m) + 3} textAnchor="end" fontSize="10" fill={EJE}>
+            <line x1={p.l} x2={W - p.r} y1={y(m)} y2={y(m)} className="stroke-zinc-800" />
+            <text x={p.l - 6} y={y(m) + 3} textAnchor="end" fontSize="10" className="fill-zinc-500">
               {m}
             </text>
           </g>
@@ -124,7 +124,7 @@ export function BarrasV({
             <title>{`${d.etiqueta}: ${d.valor}`}</title>
           </rect>
           {i % cadaEtiqueta === 0 && (
-            <text x={p.l + i * ancho + ancho / 2} y={H - 6} textAnchor="middle" fontSize="10" fill={EJE}>
+            <text x={p.l + i * ancho + ancho / 2} y={H - 6} textAnchor="middle" fontSize="10" className="fill-zinc-500">
               {d.etiqueta}
             </text>
           )}
@@ -196,7 +196,7 @@ export function Dona({ datos, centro = "Total" }: { datos: { etiqueta: string; v
         <text x="80" y="80" textAnchor="middle" fontSize="22" fontWeight="700" fill="currentColor">
           {total.toLocaleString("es-VE")}
         </text>
-        <text x="80" y="96" textAnchor="middle" fontSize="9" fill={EJE}>
+        <text x="80" y="96" textAnchor="middle" fontSize="9" className="fill-zinc-500">
           {centro}
         </text>
       </svg>
@@ -238,8 +238,8 @@ export function BarrasAgrupadas({
           const m = Math.round(max * f);
           return (
             <g key={f}>
-              <line x1={p.l} x2={W - p.r} y1={y(m)} y2={y(m)} stroke={REJILLA} />
-              <text x={p.l - 6} y={y(m) + 3} textAnchor="end" fontSize="10" fill={EJE}>
+              <line x1={p.l} x2={W - p.r} y1={y(m)} y2={y(m)} className="stroke-zinc-800" />
+              <text x={p.l - 6} y={y(m) + 3} textAnchor="end" fontSize="10" className="fill-zinc-500">
                 {m}
               </text>
             </g>
@@ -260,7 +260,7 @@ export function BarrasAgrupadas({
                 <title>{`${c} · ${s.nombre}: ${s.valores[i]}`}</title>
               </rect>
             ))}
-            <text x={p.l + i * ancho + ancho / 2} y={H - 6} textAnchor="middle" fontSize="10" fill={EJE}>
+            <text x={p.l + i * ancho + ancho / 2} y={H - 6} textAnchor="middle" fontSize="10" className="fill-zinc-500">
               {c}
             </text>
           </g>

@@ -13,6 +13,22 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { perfil, signOut } = useAuth();
   const { pathname } = useLocation();
   const [abierto, setAbierto] = useState(false);
+  const [tema, setTema] = useState<"oscuro" | "claro">(() => {
+    try {
+      return localStorage.getItem("tema") === "claro" ? "claro" : "oscuro";
+    } catch {
+      return "oscuro";
+    }
+  });
+  const cambiarTema = () => {
+    const nuevo = tema === "claro" ? "oscuro" : "claro";
+    setTema(nuevo);
+    try {
+      localStorage.setItem("tema", nuevo);
+    } catch {
+      /* sin almacenamiento: el tema vale solo para esta sesión */
+    }
+  };
   const nombre = [perfil?.nombre, perfil?.apellido].filter(Boolean).join(" ") || "Usuario";
   const esAdmin = perfil?.rol === "admin";
 
@@ -20,7 +36,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   useEffect(() => setAbierto(false), [pathname]);
 
   return (
-    <div className="min-h-screen lg:flex">
+    <div className={`min-h-screen lg:flex ${tema === "claro" ? "claro" : ""}`}>
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-3 print:hidden lg:hidden">
         <button
           onClick={() => setAbierto(true)}
@@ -112,8 +128,25 @@ export default function Layout({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 print:p-0">
-        <div className="mb-5 print:hidden">
+        <div className="mb-5 flex items-center justify-between gap-3 print:hidden">
           <BuscadorGlobal />
+          <button
+            onClick={cambiarTema}
+            aria-label={tema === "claro" ? "Cambiar a tema oscuro" : "Cambiar a tema claro"}
+            title={tema === "claro" ? "Tema oscuro" : "Tema claro"}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+          >
+            {tema === "claro" ? (
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+              </svg>
+            )}
+          </button>
         </div>
         {children}
       </main>

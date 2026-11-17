@@ -258,7 +258,7 @@ export default function Inicio() {
   const tasa = act && act.total > 0 ? Math.round((act.aceptadas / act.total) * 100) : 0;
   const mesTxt = hoy.toLocaleDateString("es-VE", { month: "long", year: "numeric" });
   const fechaCls =
-    "rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs outline-none focus:border-indigo-400 [color-scheme:dark]";
+    "rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs outline-none focus:border-indigo-400";
   const btnCls = "rounded-lg border border-zinc-700 px-3 py-1.5 text-xs hover:bg-zinc-800";
 
   return (
