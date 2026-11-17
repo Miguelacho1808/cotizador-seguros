@@ -3,12 +3,18 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { ESTADOS, colorEstado } from "./Cotizaciones";
-import { BarrasH, BarrasV, Lineas } from "../components/graficos";
+import { BarrasAgrupadas, BarrasH, BarrasV, Dona, Lineas } from "../components/graficos";
 
 type Fila = {
   estado: string;
   created_at: string;
-  cotizacion_planes: { cobertura_monto: number }[];
+  asesor_id: string;
+  cotizacion_planes: {
+    cobertura_monto: number;
+    aseguradora_nombre: string;
+    addons: string[] | null;
+    desglose: { tipo?: string } | null;
+  }[];
   cotizacion_asegurados: { edad: number }[];
 };
 type Reciente = {
@@ -27,6 +33,7 @@ const parse = (s: string) => {
   return new Date(a, m - 1, d);
 };
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const TIPO_PLAN: Record<string, string> = { hcm: "HCM", emca: "Emergencia", amy: "Adulto Mayor" };
 const usd = (n: number) => `$${n.toLocaleString("es-VE")}`;
 
 /** Trae todas las filas por páginas (el servidor entrega máx. 1000 por consulta). */
@@ -35,7 +42,9 @@ async function traerTodas(desde: Date, hasta: Date): Promise<Fila[]> {
   for (let i = 0; i < 10; i++) {
     const r = await supabase
       .from("cotizaciones")
-      .select("estado,created_at,cotizacion_planes(cobertura_monto),cotizacion_asegurados(edad)")
+      .select(
+        "estado,created_at,asesor_id,cotizacion_planes(cobertura_monto,aseguradora_nombre,addons,desglose),cotizacion_asegurados(edad)",
+      )
       .gte("created_at", desde.toISOString())
       .lt("created_at", hasta.toISOString())
       .order("created_at", { ascending: true })
@@ -116,6 +125,7 @@ export default function Inicio() {
   const [prev, setPrev] = useState<Periodo | null>(null);
   const [tend, setTend] = useState<{ mes: string; total: number; acept: number }[] | null>(null);
   const [recientes, setRecientes] = useState<Reciente[]>([]);
+  const [nombres, setNombres] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   const d0 = useMemo(() => parse(desde), [desde]);
@@ -141,6 +151,22 @@ export default function Inicio() {
       vigente = false;
     };
   }, [d0, d1, valido]);
+
+  useEffect(() => {
+    if (!esAdmin || !filas) return;
+    const ids = [...new Set(filas.map((f) => f.asesor_id))];
+    if (ids.length === 0) return;
+    supabase
+      .from("perfiles")
+      .select("id,nombre,apellido")
+      .in("id", ids)
+      .then(({ data }) => {
+        const m: Record<string, string> = {};
+        for (const x of (data as { id: string; nombre: string | null; apellido: string | null }[]) ?? [])
+          m[x.id] = [x.nombre, x.apellido].filter(Boolean).join(" ") || "Asesor";
+        setNombres(m);
+      });
+  }, [esAdmin, filas]);
 
   // Tendencia de los últimos 6 meses y últimas cotizaciones (no dependen del filtro)
   useEffect(() => {
@@ -186,11 +212,28 @@ export default function Inicio() {
     const horas = Array.from({ length: 24 }, () => 0);
     const cob = new Map<number, number>();
     const edades = [0, 0, 0, 0, 0, 0, 0];
+    const producto = new Map<string, { cot: number; acept: number }>();
+    const aseg = new Map<string, number>();
+    const addons = new Map<string, number>();
+    const asesores = new Map<string, { cot: number; acept: number }>();
     for (const c of f) {
       const t = new Date(c.created_at);
       const di = Math.floor((new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime() - d0.getTime()) / DIA);
       if (di >= 0 && di < dias.length) dias[di]++;
       horas[t.getHours()]++;
+      const a = asesores.get(c.asesor_id) ?? { cot: 0, acept: 0 };
+      a.cot++;
+      if (c.estado === "aceptada") a.acept++;
+      asesores.set(c.asesor_id, a);
+      for (const p of c.cotizacion_planes) {
+        const tp = p.desglose?.tipo ?? "otro";
+        const pr = producto.get(tp) ?? { cot: 0, acept: 0 };
+        pr.cot++;
+        if (c.estado === "aceptada") pr.acept++;
+        producto.set(tp, pr);
+        aseg.set(p.aseguradora_nombre, (aseg.get(p.aseguradora_nombre) ?? 0) + 1);
+        if (c.estado !== "borrador") for (const n of p.addons ?? []) addons.set(n, (addons.get(n) ?? 0) + 1);
+      }
       for (const p of c.cotizacion_planes) cob.set(Number(p.cobertura_monto), (cob.get(Number(p.cobertura_monto)) ?? 0) + 1);
       for (const a of c.cotizacion_asegurados) {
         const e = a.edad;
@@ -199,7 +242,14 @@ export default function Inicio() {
     }
     const topHoras = [...horas.keys()].sort((a, b) => horas[b] - horas[a]).slice(0, 3).filter((h) => horas[h] > 0).sort((a, b) => a - b);
     const coberturas = [...cob.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
-    return { dias, etDias, horas, topHoras, coberturas, edades };
+    const orden = (m: Map<string, number>) => [...m.entries()].sort((x, y) => y[1] - x[1]);
+    return {
+      dias, etDias, horas, topHoras, coberturas, edades,
+      producto: [...producto.entries()].sort((x, y) => y[1].cot - x[1].cot),
+      aseg: orden(aseg).slice(0, 7),
+      addons: orden(addons).slice(0, 7),
+      asesores: [...asesores.entries()].sort((x, y) => y[1].cot - x[1].cot),
+    };
   }, [filas, d0, d1]);
 
   const h = hoy.getHours();
@@ -310,6 +360,56 @@ export default function Inicio() {
             <p className="text-sm text-zinc-500">Cargando…</p>
           )}
         </Panel>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Panel titulo="Rendimiento por producto" sub="Planes cotizados por tipo de plan">
+          {filas ? (
+            <BarrasAgrupadas
+              categorias={calc.producto.map(([t]) => TIPO_PLAN[t] ?? "Otro")}
+              series={[
+                { nombre: "Cotizados", color: "#6366f1", valores: calc.producto.map(([, v]) => v.cot) },
+                { nombre: "En cotizaciones aceptadas", color: "#14b8a6", valores: calc.producto.map(([, v]) => v.acept) },
+              ]}
+            />
+          ) : (
+            <p className="text-sm text-zinc-500">Cargando…</p>
+          )}
+        </Panel>
+        <Panel titulo="Add-ons enviados" sub="Coberturas incluidas en cotizaciones que ya no son borrador">
+          {filas ? <Dona datos={calc.addons.map(([n, v]) => ({ etiqueta: n, valor: v }))} /> : <p className="text-sm text-zinc-500">Cargando…</p>}
+        </Panel>
+        <Panel titulo="Distribución por aseguradora" sub="Concentración de planes cotizados">
+          {filas ? <Dona datos={calc.aseg.map(([n, v]) => ({ etiqueta: n, valor: v }))} /> : <p className="text-sm text-zinc-500">Cargando…</p>}
+        </Panel>
+        {esAdmin && (
+          <Panel titulo="Rendimiento por asesor" sub="Cotizaciones y aceptadas en el rango">
+            {calc.asesores.length === 0 ? (
+              <p className="text-sm text-zinc-500">Sin datos en este período</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-xs text-zinc-500">
+                  <tr>
+                    <th className="py-1 text-left font-normal">Asesor</th>
+                    <th className="py-1 text-right font-normal">Cotiz.</th>
+                    <th className="py-1 text-right font-normal">Acept.</th>
+                    <th className="py-1 text-right font-normal">Tasa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calc.asesores.map(([id, v]) => (
+                    <tr key={id} className="border-t border-zinc-800">
+                      <td className="py-1.5">{nombres[id] ?? "…"}</td>
+                      <td className="py-1.5 text-right font-semibold">{v.cot}</td>
+                      <td className="py-1.5 text-right text-emerald-400">{v.acept}</td>
+                      <td className="py-1.5 text-right text-zinc-400">{Math.round((v.acept / v.cot) * 100)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Panel>
+        )}
       </div>
 
       <Panel titulo="Últimas cotizaciones">

@@ -158,3 +158,122 @@ export function BarrasH({ datos }: { datos: Barra[] }) {
     </div>
   );
 }
+
+const PALETA_DONA = ["#6366f1", "#14b8a6", "#f59e0b", "#818cf8", "#38bdf8", "#ec4899", "#a3e635"];
+
+/** Dona con total al centro y leyenda con porcentajes. */
+export function Dona({ datos, centro = "Total" }: { datos: { etiqueta: string; valor: number }[]; centro?: string }) {
+  const total = datos.reduce((a, d) => a + d.valor, 0);
+  if (total === 0) return <Vacio alto={150} />;
+  const R = 60;
+  const C = 2 * Math.PI * R;
+  let acum = 0;
+  return (
+    <div>
+      <svg viewBox="0 0 160 160" className="mx-auto h-44 w-44" role="img">
+        <g transform="rotate(-90 80 80)">
+          {datos.map((d, i) => {
+            const largo = (d.valor / total) * C;
+            const el = (
+              <circle
+                key={d.etiqueta}
+                cx="80"
+                cy="80"
+                r={R}
+                fill="none"
+                stroke={PALETA_DONA[i % PALETA_DONA.length]}
+                strokeWidth="22"
+                strokeDasharray={`${largo} ${C - largo}`}
+                strokeDashoffset={-acum}
+              >
+                <title>{`${d.etiqueta}: ${d.valor} (${Math.round((d.valor / total) * 100)}%)`}</title>
+              </circle>
+            );
+            acum += largo;
+            return el;
+          })}
+        </g>
+        <text x="80" y="80" textAnchor="middle" fontSize="22" fontWeight="700" fill="currentColor">
+          {total.toLocaleString("es-VE")}
+        </text>
+        <text x="80" y="96" textAnchor="middle" fontSize="9" fill={EJE}>
+          {centro}
+        </text>
+      </svg>
+      <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-zinc-400">
+        {datos.map((d, i) => (
+          <span key={d.etiqueta}>
+            <span className="mr-1 inline-block h-2 w-2 rounded-sm" style={{ background: PALETA_DONA[i % PALETA_DONA.length] }} />
+            {d.etiqueta} ({Math.round((d.valor / total) * 100)}%)
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Barras agrupadas: una pareja (o más) de barras por categoría. */
+export function BarrasAgrupadas({
+  categorias,
+  series,
+  alto = 190,
+}: {
+  categorias: string[];
+  series: { nombre: string; color: string; valores: number[] }[];
+  alto?: number;
+}) {
+  const W = 600;
+  const H = alto;
+  const p = { l: 34, r: 10, t: 10, b: 24 };
+  const maxReal = Math.max(0, ...series.flatMap((s) => s.valores));
+  if (categorias.length === 0 || maxReal === 0) return <Vacio alto={alto} />;
+  const max = tope(maxReal);
+  const y = (v: number) => p.t + (1 - v / max) * (H - p.t - p.b);
+  const ancho = (W - p.l - p.r) / categorias.length;
+  const bw = (ancho * 0.7) / series.length;
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
+        {[0, 0.25, 0.5, 0.75, 1].map((f) => {
+          const m = Math.round(max * f);
+          return (
+            <g key={f}>
+              <line x1={p.l} x2={W - p.r} y1={y(m)} y2={y(m)} stroke={REJILLA} />
+              <text x={p.l - 6} y={y(m) + 3} textAnchor="end" fontSize="10" fill={EJE}>
+                {m}
+              </text>
+            </g>
+          );
+        })}
+        {categorias.map((c, i) => (
+          <g key={c}>
+            {series.map((s, k) => (
+              <rect
+                key={s.nombre}
+                x={p.l + i * ancho + ancho * 0.15 + k * bw}
+                y={y(s.valores[i])}
+                width={bw - 1}
+                height={Math.max(0, y(0) - y(s.valores[i]))}
+                rx="2"
+                fill={s.color}
+              >
+                <title>{`${c} · ${s.nombre}: ${s.valores[i]}`}</title>
+              </rect>
+            ))}
+            <text x={p.l + i * ancho + ancho / 2} y={H - 6} textAnchor="middle" fontSize="10" fill={EJE}>
+              {c}
+            </text>
+          </g>
+        ))}
+      </svg>
+      <div className="mt-1 flex gap-4 text-xs text-zinc-400">
+        {series.map((s) => (
+          <span key={s.nombre}>
+            <span className="mr-1 inline-block h-2 w-3 rounded" style={{ background: s.color }} />
+            {s.nombre}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
