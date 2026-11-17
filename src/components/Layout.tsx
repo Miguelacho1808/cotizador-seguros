@@ -78,6 +78,9 @@ export default function Layout({ children }: { children: ReactNode }) {
           <NavLink to="/cotizaciones" end className={clase}>
             Cotizaciones
           </NavLink>
+          <NavLink to="/clientes" className={clase}>
+            Clientes
+          </NavLink>
           <NavLink to="/aseguradoras" className={clase}>
             Aseguradoras
           </NavLink>

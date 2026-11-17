@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
   calcularOpciones,
@@ -58,6 +58,8 @@ const nombreCompleto = (c: { nombre: string; apellido?: string | null }) =>
 export default function NuevaCotizacion() {
   const navigate = useNavigate();
   const [paso, setPaso] = useState(1);
+  const [params] = useSearchParams();
+  const clienteParam = params.get("cliente");
   const [tipoCot, setTipoCot] = useState<"nueva_poliza" | "renovacion">("nueva_poliza");
 
   // cliente
@@ -129,6 +131,27 @@ export default function NuevaCotizacion() {
       );
     })();
   }, []);
+
+  // Cliente precargado desde su ficha (?cliente=id)
+  useEffect(() => {
+    if (!clienteParam) return;
+    supabase
+      .from("clientes")
+      .select("id,nombre,apellido,telefono,email")
+      .eq("id", clienteParam)
+      .maybeSingle()
+      .then(({ data }) => {
+        const c = data as ClienteDB | null;
+        if (c)
+          setCliente({
+            id: c.id,
+            nombre: c.nombre,
+            apellido: c.apellido ?? "",
+            telefono: c.telefono ?? "",
+            email: c.email ?? "",
+          });
+      });
+  }, [clienteParam]);
 
   // Búsqueda de clientes (recientes si no hay texto)
   useEffect(() => {
