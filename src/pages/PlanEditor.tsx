@@ -45,7 +45,7 @@ export default function PlanEditor() {
 
   const [plan, setPlan] = useState<PlanDB | null>(null);
   const [addons, setAddons] = useState<Addon[]>([]);
-  const [beneficios, setBeneficios] = useState<{ id: string; nombre: string }[]>([]);
+  const [beneficios, setBeneficios] = useState<{ id: string; nombre: string; orden?: number }[]>([]);
   const [tarifas, setTarifas] = useState<TarifaDB[]>([]);
   const [cargado, setCargado] = useState(false);
 
@@ -97,7 +97,7 @@ export default function PlanEditor() {
 
     setPlan(pl);
     setAddons(listaAddons);
-    setBeneficios((bn.data as unknown as { id: string; nombre: string }[]) ?? []);
+    setBeneficios((bn.data as unknown as { id: string; nombre: string; orden?: number }[]) ?? []);
     setTarifas(listaTarifas);
     setD({
       nombre: pl.nombre,
@@ -262,6 +262,46 @@ export default function PlanEditor() {
     setMsgBen(r.error ? { tipo: "error", texto: r.error.message } : { tipo: "ok", texto: "Guardado." });
   };
 
+  const agregarBeneficio = async () => {
+    setMsgBen(null);
+    const nombre = window.prompt("Nombre del nuevo beneficio (ej. Telemedicina)")?.trim();
+    if (!nombre) return;
+    if (beneficios.some((b) => b.nombre.toLowerCase() === nombre.toLowerCase())) {
+      setMsgBen({ tipo: "error", texto: `"${nombre}" ya existe en la lista.` });
+      return;
+    }
+    const orden = Math.max(0, ...beneficios.map((b) => b.orden ?? 0)) + 1;
+    const nuevo = await supabase.from("beneficios").insert({ nombre, orden }).select("id,nombre,orden").single();
+    if (nuevo.error) {
+      setMsgBen({ tipo: "error", texto: nuevo.error.message });
+      return;
+    }
+    const b = nuevo.data as { id: string; nombre: string; orden: number };
+    // El beneficio es global: en los demás planes queda "No ofrecido" (no se afirma nada que no se sepa);
+    // en este plan queda "Incluido". Se corrige plan por plan.
+    const planes = await supabase.from("planes").select("id");
+    if (planes.error) {
+      setMsgBen({ tipo: "error", texto: planes.error.message });
+      return;
+    }
+    const filas = ((planes.data as { id: string }[]) ?? []).map((p) => ({
+      plan_id: p.id,
+      beneficio_id: b.id,
+      estado: p.id === id ? "incluido" : "no_ofrecido",
+    }));
+    const r = await supabase.from("plan_beneficios").upsert(filas, { onConflict: "plan_id,beneficio_id" });
+    if (r.error) {
+      setMsgBen({ tipo: "error", texto: r.error.message });
+      return;
+    }
+    setBeneficios([...beneficios, b]);
+    setBen({ ...ben, [b.id]: "incluido" });
+    setMsgBen({
+      tipo: "ok",
+      texto: `"${b.nombre}" agregado: Incluido en este plan y No ofrecido en los demás. Ajusta cada plan según corresponda.`,
+    });
+  };
+
   const eliminarPlan = async () => {
     const ok = window.confirm(
       `Vas a eliminar el plan "${plan.nombre}" con sus ${tarifas.length} tarifas. No se puede deshacer. ¿Continuar?`,
@@ -418,6 +458,9 @@ export default function PlanEditor() {
         </div>
         <div className="flex items-center gap-3">
           <Boton onClick={guardarBeneficios}>Guardar beneficios</Boton>
+          <Boton variante="secundario" onClick={agregarBeneficio}>
+            + Agregar beneficio
+          </Boton>
           <Aviso mensaje={msgBen} />
         </div>
       </Seccion>
