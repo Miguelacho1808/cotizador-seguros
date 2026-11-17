@@ -74,7 +74,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             + Nueva cotización
           </NavLink>
           <NavLink to="/" end className={clase}>
-            Inicio
+            Dashboard
           </NavLink>
           <NavLink to="/cotizaciones" end className={clase}>
             Cotizaciones
