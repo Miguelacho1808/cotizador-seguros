@@ -177,6 +177,7 @@ export default function CotizacionDetalle() {
         <EnviarEmail
           para={cot.clientes?.email ?? ""}
           onCerrar={() => setVerEmail(false)}
+          onEnviado={() => cot.estado === "borrador" && cambiarEstado("enviada")}
           variables={{
             cliente: cot.clientes?.nombre ?? "",
             numero: String(cot.numero),

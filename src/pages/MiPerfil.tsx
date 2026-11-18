@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { telefonoWhatsApp } from "../lib/telefono";
 import Avatar from "../components/Avatar";
+import MiEmail from "../components/MiEmail";
 import { Aviso, Boton, Campo, Seccion, inputCls, type Mensaje } from "../components/ui";
 
 const TIPOS = ["image/png", "image/jpeg", "image/webp"];
@@ -330,6 +331,8 @@ export default function MiPerfil() {
           <Aviso mensaje={msgClave} />
         </div>
       </Seccion>
+
+      <MiEmail />
     </div>
   );
 }

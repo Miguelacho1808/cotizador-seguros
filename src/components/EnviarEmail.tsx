@@ -5,11 +5,14 @@ import { Aviso, Boton, Campo, inputCls, type Mensaje } from "./ui";
 
 type Props = {
   para: string;
+  /** Se llama tras un envío correcto desde el servidor (para marcar la cotización como enviada). */
+  onEnviado?: () => void;
   variables: Record<string, string>;
   onCerrar: () => void;
 };
 
-export default function EnviarEmail({ para, variables, onCerrar }: Props) {
+export default function EnviarEmail({ para, variables, onCerrar, onEnviado }: Props) {
+  const [enviando, setEnviando] = useState(false);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [destino, setDestino] = useState(para);
   const [asunto, setAsunto] = useState("");
@@ -34,6 +37,18 @@ export default function EnviarEmail({ para, variables, onCerrar }: Props) {
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const enviar = async () => {
+    if (!destino.trim()) return setMsg({ tipo: "error", texto: "Escribe el correo del cliente." });
+    setEnviando(true);
+    setMsg(null);
+    const r = await supabase.functions.invoke("enviar-correo", { body: { accion: "enviar", para: destino.trim(), asunto, cuerpo } });
+    setEnviando(false);
+    const d = r.data as { ok?: boolean; error?: string } | null;
+    if (r.error || !d?.ok) return setMsg({ tipo: "error", texto: d?.error ?? r.error?.message ?? "No se pudo enviar." });
+    setMsg({ tipo: "ok", texto: `Correo enviado a ${destino.trim()}.` });
+    onEnviado?.();
+  };
 
   const enc = encodeURIComponent;
   const abrirCorreo = () => {
@@ -65,6 +80,9 @@ export default function EnviarEmail({ para, variables, onCerrar }: Props) {
           Cerrar ✕
         </button>
       </div>
+      <p className="text-xs text-zinc-500">
+        "Enviar" usa tu email configurado y verificado en Mi Perfil → Mi Email. Si aún no lo tienes, usa Gmail o tu correo.
+      </p>
       <div className="flex flex-wrap gap-2">
         {plantillas.map((p) => (
           <button
@@ -87,7 +105,12 @@ export default function EnviarEmail({ para, variables, onCerrar }: Props) {
         <textarea rows={10} value={cuerpo} onChange={(e) => setCuerpo(e.target.value)} className={inputCls} />
       </Campo>
       <div className="flex flex-wrap items-center gap-2">
-        <Boton onClick={abrirGmail}>Abrir en Gmail</Boton>
+        <Boton onClick={enviar} disabled={enviando}>
+          {enviando ? "Enviando…" : "✉ Enviar"}
+        </Boton>
+        <Boton variante="secundario" onClick={abrirGmail}>
+          Abrir en Gmail
+        </Boton>
         <Boton variante="secundario" onClick={abrirCorreo}>
           Abrir en mi correo
         </Boton>
