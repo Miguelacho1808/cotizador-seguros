@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { telefonoWhatsApp } from "../lib/telefono";
 import { Aviso, Boton, type Mensaje } from "../components/ui";
 import { ESTADOS, colorEstado } from "./Cotizaciones";
+import { esMercantilPanama } from "../lib/premiumMercantilPanama";
 import DocumentoCotizacion, { type PlanDoc } from "../components/DocumentoCotizacion";
 
 type Plan = {
@@ -150,6 +151,14 @@ export default function CotizacionDetalle() {
           <Boton variante="secundario" onClick={() => window.print()}>
             Imprimir / PDF
           </Boton>
+          {planes.some((p) => esMercantilPanama(p.aseguradora_nombre)) && (
+            <Link
+              to={`/cotizaciones/${cot.id}/premium`}
+              className="rounded-lg border border-indigo-400/50 px-4 py-2 text-sm font-medium text-indigo-300 hover:bg-indigo-500/10"
+            >
+              PDF Mercantil Panamá
+            </Link>
+          )}
           <Boton variante="peligro" onClick={eliminar}>
             Eliminar
           </Boton>

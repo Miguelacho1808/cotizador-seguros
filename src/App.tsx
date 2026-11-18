@@ -17,6 +17,7 @@ import CotizacionDetalle from "./pages/CotizacionDetalle";
 import Compartida from "./pages/Compartida";
 import Clientes from "./pages/Clientes";
 import ClienteDetalle from "./pages/ClienteDetalle";
+import CotizacionPremium from "./pages/CotizacionPremium";
 import MiPerfil from "./pages/MiPerfil";
 
 function Centro({ children }: { children: ReactNode }) {
@@ -27,7 +28,7 @@ function Centro({ children }: { children: ReactNode }) {
   );
 }
 
-function Protegido() {
+function Protegido({ sinLayout = false }: { sinLayout?: boolean }) {
   const { session, perfil, loading, signOut } = useAuth();
 
   if (loading) return <Centro>Cargando…</Centro>;
@@ -45,6 +46,7 @@ function Protegido() {
       </Centro>
     );
   }
+  if (sinLayout) return <Outlet />;
   return (
     <Layout>
       <Outlet />
@@ -70,6 +72,9 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/compartir/:token" element={<Compartida />} />
+          <Route element={<Protegido sinLayout />}>
+            <Route path="/cotizaciones/:id/premium" element={<CotizacionPremium />} />
+          </Route>
           <Route element={<Protegido />}>
             <Route path="/" element={<Inicio />} />
             <Route path="/cotizaciones" element={<Cotizaciones />} />
