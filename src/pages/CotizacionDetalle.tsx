@@ -6,6 +6,7 @@ import { Aviso, Boton, type Mensaje } from "../components/ui";
 import { ESTADOS, colorEstado } from "./Cotizaciones";
 import { esMercantilPanama } from "../lib/premiumMercantilPanama";
 import EnviarEmail from "../components/EnviarEmail";
+import { tablaPlanesHtml, variablesCorreo } from "../lib/plantillasCorreo";
 import { useAuth } from "../lib/auth";
 import DocumentoCotizacion, { type PlanDoc } from "../components/DocumentoCotizacion";
 
@@ -42,6 +43,14 @@ export default function CotizacionDetalle() {
   const navigate = useNavigate();
   const { perfil } = useAuth();
   const [verEmail, setVerEmail] = useState(false);
+  const [asesorWa, setAsesorWa] = useState("");
+  useEffect(() => {
+    if (!perfil) return;
+    supabase.from("perfiles").select("whatsapp,telefono").eq("id", perfil.id).maybeSingle().then(({ data }) => {
+      const d = data as { whatsapp: string | null; telefono: string | null } | null;
+      setAsesorWa(d?.whatsapp ?? d?.telefono ?? "");
+    });
+  }, [perfil]);
   const [cot, setCot] = useState<Cot | null>(null);
   const [benef, setBenef] = useState<Record<string, { nombre: string; estado: string; orden: number }[]>>({});
   const [org, setOrg] = useState<{ nombre: string; logo_url: string | null } | null>(null);
@@ -178,15 +187,29 @@ export default function CotizacionDetalle() {
           para={cot.clientes?.email ?? ""}
           onCerrar={() => setVerEmail(false)}
           onEnviado={() => cot.estado === "borrador" && cambiarEstado("enviada")}
-          variables={{
+          variables={variablesCorreo({
+            orgNombre: org?.nombre ?? "",
+            orgLogo: org?.logo_url ?? null,
             cliente: cot.clientes?.nombre ?? "",
-            numero: String(cot.numero),
+            numero: cot.numero,
             enlace,
+            asesor: [perfil?.nombre, perfil?.apellido].filter(Boolean).join(" "),
+            whatsapp: asesorWa,
+            planesTabla: tablaPlanesHtml(
+              [...planes]
+                .sort((a, b) => a.aseguradora_nombre.localeCompare(b.aseguradora_nombre) || a.cobertura_monto - b.cobertura_monto)
+                .map((p) => ({
+                  aseguradora: p.aseguradora_nombre,
+                  plan: p.plan_nombre,
+                  cobertura: p.cobertura_monto,
+                  deducible: p.deducible,
+                  mensual: p.prima_mensual,
+                  anual: p.prima_anual,
+                })),
+            ),
             aseguradoras: [...new Set(planes.map((p) => p.aseguradora_nombre))].join(", "),
             desde: `US$ ${Math.min(...planes.map((p) => p.prima_anual)).toLocaleString("es-ES", { maximumFractionDigits: 0 })}`,
-            asesor: [perfil?.nombre, perfil?.apellido].filter(Boolean).join(" "),
-            empresa: org?.nombre ?? "",
-          }}
+          })}
         />
       )}
 

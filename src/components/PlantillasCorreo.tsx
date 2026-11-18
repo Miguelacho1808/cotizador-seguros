@@ -1,109 +1,114 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { VARIABLES, type Plantilla } from "../lib/plantillasCorreo";
-import { Aviso, Boton, Campo, Seccion, inputCls, type Mensaje } from "./ui";
+import { bloquesPorDefecto, type Plantilla } from "../lib/plantillasCorreo";
+import { Aviso, Boton, type Mensaje } from "./ui";
+import PlantillaEditor from "./PlantillaEditor";
+
+const COLS = "id,nombre,asunto,cuerpo,predeterminada,html,bloques,updated_at";
 
 export default function PlantillasCorreo() {
   const [lista, setLista] = useState<Plantilla[]>([]);
-  const [sel, setSel] = useState<Plantilla | null>(null);
+  const [editando, setEditando] = useState<Plantilla | null>(null);
   const [msg, setMsg] = useState<Mensaje | null>(null);
 
-  const cargar = async (elegir?: string) => {
-    const r = await supabase.from("plantillas_correo").select("id,nombre,asunto,cuerpo,predeterminada").order("created_at");
-    if (r.error) return setMsg({ tipo: "error", texto: r.error.message });
-    const l = (r.data as Plantilla[]) ?? [];
-    setLista(l);
-    setSel((s) => l.find((x) => x.id === (elegir ?? s?.id)) ?? l[0] ?? null);
-  };
-  useEffect(() => {
-    cargar();
+  const cargar = useCallback(async () => {
+    const r = await supabase.from("plantillas_correo").select(COLS).order("created_at");
+    if (r.error) setMsg({ tipo: "error", texto: r.error.message });
+    else setLista((r.data as unknown as Plantilla[]) ?? []);
   }, []);
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
 
-  const guardar = async () => {
-    if (!sel) return;
-    if (!sel.nombre.trim() || !sel.asunto.trim() || !sel.cuerpo.trim())
-      return setMsg({ tipo: "error", texto: "Nombre, asunto y mensaje son obligatorios." });
-    if (sel.predeterminada) await supabase.from("plantillas_correo").update({ predeterminada: false }).neq("id", sel.id);
+  const crear = async (base?: Plantilla) => {
     const r = await supabase
       .from("plantillas_correo")
-      .update({ nombre: sel.nombre.trim(), asunto: sel.asunto, cuerpo: sel.cuerpo, predeterminada: sel.predeterminada })
-      .eq("id", sel.id);
-    if (r.error) return setMsg({ tipo: "error", texto: r.error.message });
-    setMsg({ tipo: "ok", texto: "Plantilla guardada." });
-    cargar();
-  };
-  const nueva = async () => {
-    const r = await supabase
-      .from("plantillas_correo")
-      .insert({ nombre: "Nueva plantilla", asunto: "Cotización #{numero}", cuerpo: "Hola {cliente},\n\n{enlace}\n\nSaludos,\n{asesor}" })
-      .select("id")
+      .insert({
+        nombre: base ? `${base.nombre} (copia)` : "Nueva plantilla",
+        asunto: base?.asunto ?? "Tu cotización #{numero}",
+        cuerpo: base?.cuerpo ?? "Hola {cliente},\n\nTe comparto tu cotización #{numero}: {enlace}\n\nSaludos,\n{asesor}",
+        bloques: base ? base.bloques : bloquesPorDefecto(),
+        html: base ? base.html : null,
+      })
+      .select(COLS)
       .single();
     if (r.error) return setMsg({ tipo: "error", texto: r.error.message });
-    cargar((r.data as { id: string }).id);
+    await cargar();
+    setEditando(r.data as unknown as Plantilla);
   };
-  const eliminar = async () => {
-    if (!sel || !window.confirm(`¿Eliminar la plantilla "${sel.nombre}"?`)) return;
-    const r = await supabase.from("plantillas_correo").delete().eq("id", sel.id);
-    if (r.error) return setMsg({ tipo: "error", texto: r.error.message });
-    setSel(null);
-    cargar();
+  const predeterminar = async (p: Plantilla) => {
+    await supabase.from("plantillas_correo").update({ predeterminada: false }).neq("id", p.id);
+    const r = await supabase.from("plantillas_correo").update({ predeterminada: true }).eq("id", p.id);
+    if (r.error) setMsg({ tipo: "error", texto: r.error.message });
+    else {
+      setMsg({ tipo: "ok", texto: `"${p.nombre}" es ahora la predeterminada.` });
+      await cargar();
+    }
+  };
+  const eliminar = async (p: Plantilla) => {
+    if (!window.confirm(`¿Eliminar la plantilla "${p.nombre}"?`)) return;
+    const r = await supabase.from("plantillas_correo").delete().eq("id", p.id);
+    if (r.error) setMsg({ tipo: "error", texto: r.error.message });
+    else await cargar();
   };
 
+  if (editando)
+    return (
+      <PlantillaEditor
+        plantilla={editando}
+        onVolver={() => {
+          setEditando(null);
+          void cargar();
+        }}
+      />
+    );
+
+  const btn = "rounded-md border border-zinc-700 px-2.5 py-1.5 text-sm hover:bg-zinc-800";
   return (
-    <Seccion titulo="Plantillas de correo" ayuda="Se usan al enviar una cotización por email. Escribe las variables tal cual; se reemplazan al enviar.">
-      <div className="flex flex-wrap gap-2">
-        {lista.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setSel(p)}
-            className={`rounded-lg border px-3 py-1.5 text-sm ${
-              sel?.id === p.id ? "border-indigo-400 bg-indigo-500/20" : "border-zinc-700 hover:bg-zinc-800"
-            }`}
-          >
-            {p.nombre}
-            {p.predeterminada && " ★"}
-          </button>
-        ))}
-        <Boton variante="secundario" onClick={nueva}>
-          + Nueva
-        </Boton>
-      </div>
-      {sel && (
-        <div className="space-y-3">
-          <Campo etiqueta="Nombre de la plantilla">
-            <input value={sel.nombre} onChange={(e) => setSel({ ...sel, nombre: e.target.value })} className={inputCls} />
-          </Campo>
-          <Campo etiqueta="Asunto">
-            <input value={sel.asunto} onChange={(e) => setSel({ ...sel, asunto: e.target.value })} className={inputCls} />
-          </Campo>
-          <Campo etiqueta="Mensaje">
-            <textarea
-              rows={10}
-              value={sel.cuerpo}
-              onChange={(e) => setSel({ ...sel, cuerpo: e.target.value })}
-              className={inputCls}
-            />
-          </Campo>
-          <p className="text-xs text-zinc-500">
-            Variables: {VARIABLES.map(([v, d]) => `${v} (${d})`).join(" · ")}
-          </p>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={sel.predeterminada}
-              onChange={(e) => setSel({ ...sel, predeterminada: e.target.checked })}
-            />
-            Usar como predeterminada
-          </label>
-          <div className="flex items-center gap-3">
-            <Boton onClick={guardar}>Guardar plantilla</Boton>
-            <Boton variante="peligro" onClick={eliminar}>
-              Eliminar
-            </Boton>
-            <Aviso mensaje={msg} />
-          </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-3xl font-extrabold">Plantillas de Email</h2>
+          <p className="text-sm text-zinc-400">Crea y personaliza las plantillas que se usan al enviar cotizaciones por email.</p>
         </div>
-      )}
-    </Seccion>
+        <Boton onClick={() => crear()}>+ Nueva plantilla</Boton>
+      </div>
+      <Aviso mensaje={msg} />
+      <div className="space-y-3">
+        {lista.map((p) => (
+          <div
+            key={p.id}
+            className={`flex items-center gap-4 rounded-2xl border p-4 ${p.predeterminada ? "border-indigo-400/60 bg-zinc-800" : "border-zinc-800 bg-zinc-900"}`}
+          >
+            <span className={`flex h-11 w-11 items-center justify-center rounded-xl text-lg ${p.predeterminada ? "bg-indigo-300 text-indigo-900" : "bg-zinc-700"}`}>▤</span>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold">
+                {p.nombre}
+                {p.predeterminada && <span className="ml-2 rounded bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-indigo-300">DEFAULT</span>}
+              </p>
+              <p className="text-xs text-zinc-400">Actualizada {new Date(p.updated_at).toLocaleDateString("es-VE")}</p>
+            </div>
+            <div className="flex gap-1.5">
+              {!p.predeterminada && (
+                <button className={btn} title="Hacer predeterminada" onClick={() => predeterminar(p)}>
+                  ☆
+                </button>
+              )}
+              <button className={btn} title="Editar" onClick={() => setEditando(p)}>
+                ✎
+              </button>
+              <button className={btn} title="Duplicar" onClick={() => crear(p)}>
+                ⧉
+              </button>
+              {!p.predeterminada && (
+                <button className={`${btn} border-red-500/40 text-red-400`} title="Eliminar" onClick={() => eliminar(p)}>
+                  🗑
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
