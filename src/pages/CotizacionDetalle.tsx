@@ -72,12 +72,12 @@ export default function CotizacionDetalle() {
           if (ids.length > 0)
             supabase
               .from("plan_beneficios")
-              .select("plan_id,estado,beneficios(nombre,orden)")
+              .select("plan_id,estado,beneficios(nombre,orden,activo)")
               .in("plan_id", ids)
               .then(({ data: b }) => {
                 const m: Record<string, { nombre: string; estado: string; orden: number }[]> = {};
-                for (const x of (b as unknown as { plan_id: string; estado: string; beneficios: { nombre: string; orden: number } }[]) ?? [])
-                  (m[x.plan_id] ??= []).push({ nombre: x.beneficios.nombre, estado: x.estado, orden: x.beneficios.orden });
+                for (const x of (b as unknown as { plan_id: string; estado: string; beneficios: { nombre: string; orden: number; activo: boolean } }[]) ?? [])
+                  if (x.beneficios.activo) (m[x.plan_id] ??= []).push({ nombre: x.beneficios.nombre, estado: x.estado, orden: x.beneficios.orden });
                 for (const k of Object.keys(m)) m[k].sort((a, b2) => a.orden - b2.orden);
                 setBenef(m);
               });

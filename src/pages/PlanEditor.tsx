@@ -45,7 +45,7 @@ export default function PlanEditor() {
 
   const [plan, setPlan] = useState<PlanDB | null>(null);
   const [addons, setAddons] = useState<Addon[]>([]);
-  const [beneficios, setBeneficios] = useState<{ id: string; nombre: string; orden?: number }[]>([]);
+  const [beneficios, setBeneficios] = useState<{ id: string; nombre: string; orden?: number; activo: boolean }[]>([]);
   const [tarifas, setTarifas] = useState<TarifaDB[]>([]);
   const [cargado, setCargado] = useState(false);
 
@@ -69,7 +69,7 @@ export default function PlanEditor() {
       supabase.from("planes").select("*, aseguradoras(id,nombre)").eq("id", id!).single(),
       supabase.from("addons").select("id,nombre,orden").eq("activo", true).order("orden"),
       supabase.from("plan_addons").select("addon_id,edad_min,edad_max,suma_asegurada").eq("plan_id", id!),
-      supabase.from("beneficios").select("id,nombre,orden").order("orden"),
+      supabase.from("beneficios").select("id,nombre,orden,activo").order("orden"),
       supabase.from("plan_beneficios").select("beneficio_id,estado").eq("plan_id", id!),
       supabase
         .from("tarifas")
@@ -97,7 +97,7 @@ export default function PlanEditor() {
 
     setPlan(pl);
     setAddons(listaAddons);
-    setBeneficios((bn.data as unknown as { id: string; nombre: string; orden?: number }[]) ?? []);
+    setBeneficios((bn.data as unknown as { id: string; nombre: string; orden?: number; activo: boolean }[]) ?? []);
     setTarifas(listaTarifas);
     setD({
       nombre: pl.nombre,
@@ -253,7 +253,7 @@ export default function PlanEditor() {
 
   const guardarBeneficios = async () => {
     setMsgBen(null);
-    const filas = beneficios.map((b) => ({
+    const filas = beneficios.filter((b) => b.activo).map((b) => ({
       plan_id: id,
       beneficio_id: b.id,
       estado: ben[b.id] ?? "incluido",
@@ -271,12 +271,12 @@ export default function PlanEditor() {
       return;
     }
     const orden = Math.max(0, ...beneficios.map((b) => b.orden ?? 0)) + 1;
-    const nuevo = await supabase.from("beneficios").insert({ nombre, orden }).select("id,nombre,orden").single();
+    const nuevo = await supabase.from("beneficios").insert({ nombre, orden }).select("id,nombre,orden,activo").single();
     if (nuevo.error) {
       setMsgBen({ tipo: "error", texto: nuevo.error.message });
       return;
     }
-    const b = nuevo.data as { id: string; nombre: string; orden: number };
+    const b = nuevo.data as { id: string; nombre: string; orden: number; activo: boolean };
     // El beneficio es global: en los demás planes queda "No ofrecido" (no se afirma nada que no se sepa);
     // en este plan queda "Incluido". Se corrige plan por plan.
     const planes = await supabase.from("planes").select("id");
@@ -300,6 +300,37 @@ export default function PlanEditor() {
       tipo: "ok",
       texto: `"${b.nombre}" agregado: Incluido en este plan y No ofrecido en los demás. Ajusta cada plan según corresponda.`,
     });
+  };
+
+  const ocultarBeneficio = async (b: { id: string; nombre: string }, activo: boolean) => {
+    setMsgBen(null);
+    const r = await supabase.from("beneficios").update({ activo }).eq("id", b.id);
+    if (r.error) {
+      setMsgBen({ tipo: "error", texto: r.error.message });
+      return;
+    }
+    setBeneficios(beneficios.map((x) => (x.id === b.id ? { ...x, activo } : x)));
+    setMsgBen({
+      tipo: "ok",
+      texto: activo
+        ? `"${b.nombre}" se muestra de nuevo en todos los planes.`
+        : `"${b.nombre}" oculto en todos los planes: ya no sale en el PDF, el enlace ni esta lista. Puedes mostrarlo de nuevo abajo.`,
+    });
+  };
+
+  const eliminarBeneficio = async (b: { id: string; nombre: string }) => {
+    const ok = window.confirm(
+      `Vas a eliminar "${b.nombre}" de TODOS los planes. Desaparece del PDF y del enlace y no se puede deshacer. Si solo quieres dejar de mostrarlo, usa "Ocultar". ¿Eliminar?`,
+    );
+    if (!ok) return;
+    setMsgBen(null);
+    const r = await supabase.from("beneficios").delete().eq("id", b.id);
+    if (r.error) {
+      setMsgBen({ tipo: "error", texto: r.error.message });
+      return;
+    }
+    setBeneficios(beneficios.filter((x) => x.id !== b.id));
+    setMsgBen({ tipo: "ok", texto: `"${b.nombre}" eliminado.` });
   };
 
   const eliminarPlan = async () => {
@@ -441,9 +472,10 @@ export default function PlanEditor() {
         ayuda="Aparecen en la tabla comparativa del PDF y del enlace. Por ahora todos están marcados como incluidos; corrígelos plan por plan."
       >
         <div className="grid gap-2 md:grid-cols-2">
-          {beneficios.map((b) => (
+          {beneficios.filter((b) => b.activo).map((b) => (
             <div key={b.id} className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 px-3 py-2">
               <span className="text-sm">{b.nombre}</span>
+              <div className="flex items-center gap-1.5">
               <select
                 value={ben[b.id] ?? "incluido"}
                 onChange={(e) => setBen({ ...ben, [b.id]: e.target.value })}
@@ -453,9 +485,58 @@ export default function PlanEditor() {
                 <option value="opcional">Opcional</option>
                 <option value="no_ofrecido">No ofrecido</option>
               </select>
+              <button
+                type="button"
+                onClick={() => ocultarBeneficio(b, false)}
+                title="Ocultar en todos los planes (PDF y enlace)"
+                className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+              >
+                Ocultar
+              </button>
+              <button
+                type="button"
+                onClick={() => eliminarBeneficio(b)}
+                title="Eliminar de todos los planes"
+                className="rounded-md border border-red-500/40 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10"
+              >
+                Eliminar
+              </button>
+              </div>
             </div>
           ))}
         </div>
+        {beneficios.some((b) => !b.activo) && (
+          <details className="rounded-lg border border-zinc-800 p-3 text-sm">
+            <summary className="cursor-pointer text-zinc-400">
+              Beneficios ocultos ({beneficios.filter((b) => !b.activo).length})
+            </summary>
+            <div className="mt-2 space-y-2">
+              {beneficios
+                .filter((b) => !b.activo)
+                .map((b) => (
+                  <div key={b.id} className="flex items-center justify-between gap-3">
+                    <span className="text-zinc-400">{b.nombre}</span>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => ocultarBeneficio(b, true)}
+                        className="rounded-md border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800"
+                      >
+                        Mostrar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => eliminarBeneficio(b)}
+                        className="rounded-md border border-red-500/40 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </details>
+        )}
         <div className="flex items-center gap-3">
           <Boton onClick={guardarBeneficios}>Guardar beneficios</Boton>
           <Boton variante="secundario" onClick={agregarBeneficio}>
