@@ -20,7 +20,7 @@ const AREAS = [
   { id: "vehiculos", nombre: "Vehículos", desc: "RCV, Cobertura Amplia (Casco)", activa: false },
   { id: "vitales", nombre: "Vitales", desc: "Vida, funerario, accidentes, renta por hospitalización y cáncer", activa: false },
 ];
-const CANALES = ["Chatbot", "Email", "Redes Sociales", "Referido", "Web", "WhatsApp"];
+const CANALES_BASE = ["Chatbot", "Email", "Redes Sociales", "Referido", "Web", "WhatsApp"];
 const PASOS = ["Área", "Cliente", "Asegurados", "Precios", "Resumen"];
 const MAX_COBERTURAS = 4;
 const MAX_EMPRESAS = 4;
@@ -76,6 +76,7 @@ export default function NuevaCotizacion() {
 
   // catálogos y datos de cálculo
   const [montos, setMontos] = useState<number[]>([]);
+  const [CANALES, setCanales] = useState<string[]>(CANALES_BASE);
   const [addonsCat, setAddonsCat] = useState<AddonCat[]>([]);
   const [planes, setPlanes] = useState<PlanCalc[]>([]);
   const [tarifas, setTarifas] = useState<TarifaCalc[]>([]);
@@ -98,7 +99,7 @@ export default function NuevaCotizacion() {
   // Carga inicial: montos disponibles, add-ons y planes
   useEffect(() => {
     void (async () => {
-      const [t, a, p] = await Promise.all([
+      const [t, a, p, cn, cc] = await Promise.all([
         supabase.from("tarifas").select("cobertura_monto").eq("activa", true),
         supabase.from("addons").select("id,nombre,orden,solo_sexo")
           .eq("activo", true).order("orden"),
@@ -107,12 +108,18 @@ export default function NuevaCotizacion() {
           .select(
             "id,nombre,tipo,modalidad,grupo_min,grupo_max,activo,recomendado,mas_vendido,aseguradoras(id,nombre,activa,renovacion_habilitada,recargo_renovacion_pct,logo_url),plan_addons(addon_id,edad_min,edad_max),cuotas",
           ),
+        supabase.from("canales").select("nombre").eq("activo", true).order("orden"),
+        supabase.from("coberturas_catalogo").select("monto").eq("activo", false),
       ]);
+      if (!cn.error && cn.data && cn.data.length > 0) setCanales((cn.data as { nombre: string }[]).map((x) => x.nombre));
+      const inactivas = new Set(((cc.data as { monto: number }[] | null) ?? []).map((x) => Number(x.monto)));
       if (t.error || a.error || p.error) {
         setMsg({ tipo: "error", texto: (t.error ?? a.error ?? p.error)!.message });
         return;
       }
-      const m = [...new Set((t.data as { cobertura_monto: number }[]).map((x) => Number(x.cobertura_monto)))].sort(
+      const m = [...new Set((t.data as { cobertura_monto: number }[]).map((x) => Number(x.cobertura_monto)))]
+        .filter((x) => !inactivas.has(x))
+        .sort(
         (x, y) => x - y,
       );
       setMontos(m);
