@@ -1,3 +1,4 @@
+import { esMercantilPanama } from "../lib/premiumMercantilPanama";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -87,6 +88,7 @@ export default function NuevaCotizacion() {
   const [planesOcultos, setPlanesOcultos] = useState<string[]>([]);
   const [addonsEmpresa, setAddonsEmpresa] = useState<Record<string, string[]>>({});
   const [dedElegido, setDedElegido] = useState<Record<string, number>>({});
+  const [dedMarcados, setDedMarcados] = useState<Record<string, number[]>>({});
   const [seleccion, setSeleccion] = useState<string[]>([]);
   const [destacadas, setDestacadas] = useState<string[]>([]);
 
@@ -228,9 +230,11 @@ export default function NuevaCotizacion() {
             addonsPorAseguradora: addonsEmpresa,
             renovacion: tipoCot === "renovacion",
             deducibleElegido: dedElegido,
+            multiDeducible: esMercantilPanama,
+            deduciblesMarcados: dedMarcados,
           })
         : [],
-    [paso, planes, tarifas, addonsCat, aseguradosCalc, coberturas, addonsElegidos, addonsEmpresa, tipoCot, dedElegido],
+    [paso, planes, tarifas, addonsCat, aseguradosCalc, coberturas, addonsElegidos, addonsEmpresa, tipoCot, dedElegido, dedMarcados],
   );
 
   const moverCarrusel = (dir: 1 | -1) => {
@@ -961,7 +965,36 @@ export default function NuevaCotizacion() {
                         </div>
                       </div>
 
-                      {o.deducibles.length > 1 && (
+                      {o.deducibles.length > 1 && esMercantilPanama(o.aseguradora) && (() => {
+                        const k = `${o.plan_id}|${o.cobertura}`;
+                        const activos = visibles.filter((x) => x.plan_id === o.plan_id && x.cobertura === o.cobertura).map((x) => x.deducible);
+                        return (
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-400">
+                            Deducible
+                            {o.deducibles.map((d) => {
+                              const on = activos.includes(d);
+                              return (
+                                <button
+                                  key={d}
+                                  type="button"
+                                  aria-pressed={on}
+                                  onClick={() => {
+                                    const nuevo = on ? activos.filter((x) => x !== d) : [...activos, d];
+                                    if (nuevo.length === 0) return;
+                                    setDedMarcados({ ...dedMarcados, [k]: nuevo });
+                                  }}
+                                  className={`rounded-md border px-2 py-0.5 ${
+                                    on ? "border-indigo-400 bg-indigo-500/20 text-zinc-100" : "border-zinc-700 hover:bg-zinc-800"
+                                  }`}
+                                >
+                                  {d === 0 ? "Sin deducible" : usd(d)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                      {o.deducibles.length > 1 && !esMercantilPanama(o.aseguradora) && (
                         <label className="flex items-center gap-2 text-xs text-zinc-400">
                           Deducible
                           <select
@@ -976,6 +1009,9 @@ export default function NuevaCotizacion() {
                             ))}
                           </select>
                         </label>
+                      )}
+                      {esMercantilPanama(o.aseguradora) && o.deducibles.length > 1 && (
+                        <p className="text-xs font-medium text-indigo-300">Deducible {o.deducible === 0 ? "ninguno" : usd(o.deducible)}</p>
                       )}
 
                       <ul className="space-y-0.5 text-xs">

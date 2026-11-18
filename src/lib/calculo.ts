@@ -164,6 +164,10 @@ export function calcularOpciones(params: {
   addonsPorAseguradora?: Record<string, string[]>;
   renovacion: boolean;
   deducibleElegido?: Record<string, number>;
+  /** Aseguradoras que permiten cotizar varios deducibles a la vez (una opción por deducible). */
+  multiDeducible?: (aseguradora: string) => boolean;
+  /** Deducibles marcados por plan|cobertura cuando la aseguradora admite varios. */
+  deduciblesMarcados?: Record<string, number[]>;
 }): Opcion[] {
   const { planes, tarifas, addonsCatalogo, asegurados, coberturas, addonsElegidos, renovacion } = params;
   const salida: Opcion[] = [];
@@ -203,8 +207,18 @@ export function calcularOpciones(params: {
       if (posibles.length === 0) continue;
 
       const dedElegido = params.deducibleElegido?.[`${plan.id}|${cobertura}`];
-      const elegido = posibles.find((p) => p.ded === dedElegido) ?? posibles[0];
       const dedsValidos = posibles.map((p) => p.ded);
+      const multi = params.multiDeducible?.(plan.aseguradora.nombre) ?? false;
+      let elegidos: typeof posibles;
+      if (multi) {
+        const marcados = (params.deduciblesMarcados?.[`${plan.id}|${cobertura}`] ?? []).filter((d) => dedsValidos.includes(d));
+        const base0 = marcados.length > 0 ? marcados : [dedElegido ?? posibles[0].ded].filter((d) => dedsValidos.includes(d));
+        elegidos = posibles.filter((p) => (base0.length > 0 ? base0 : [posibles[0].ded]).includes(p.ded));
+      } else {
+        elegidos = [posibles.find((p) => p.ded === dedElegido) ?? posibles[0]];
+      }
+
+      for (const elegido of elegidos) {
 
       let base = 0;
       const porPersona = asegurados.map((a, i) => {
@@ -254,7 +268,7 @@ export function calcularOpciones(params: {
       const anual = redondeoArriba(subtotal + recargo);
 
       salida.push({
-        clave: `${plan.id}|${cobertura}`,
+        clave: multi ? `${plan.id}|${cobertura}|${elegido.ded}` : `${plan.id}|${cobertura}`,
         plan_id: plan.id,
         plan: plan.nombre,
         tipo: plan.tipo,
@@ -273,6 +287,7 @@ export function calcularOpciones(params: {
         porPersona,
         cuotas: plan.cuotas && plan.cuotas.length > 0 ? plan.cuotas : CUOTAS_BASE,
       });
+      }
     }
   }
 
