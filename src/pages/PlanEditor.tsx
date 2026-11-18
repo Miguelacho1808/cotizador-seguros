@@ -55,6 +55,7 @@ export default function PlanEditor() {
   const [flags, setFlags] = useState({ recomendado: false, mas_vendido: false, activo: true });
   const [cfg, setCfg] = useState<Record<string, CfgAddon>>({});
   const [ben, setBen] = useState<Record<string, string>>({});
+  const [ocultos, setOcultos] = useState<Record<string, boolean>>({});
   const [colsIds, setColsIds] = useState<string[]>([]);
 
   const [msgDatos, setMsgDatos] = useState<Mensaje | null>(null);
@@ -70,7 +71,7 @@ export default function PlanEditor() {
       supabase.from("addons").select("id,nombre,orden").eq("activo", true).order("orden"),
       supabase.from("plan_addons").select("addon_id,edad_min,edad_max,suma_asegurada").eq("plan_id", id!),
       supabase.from("beneficios").select("id,nombre,orden,activo").order("orden"),
-      supabase.from("plan_beneficios").select("beneficio_id,estado").eq("plan_id", id!),
+      supabase.from("plan_beneficios").select("beneficio_id,estado,oculto").eq("plan_id", id!),
       supabase
         .from("tarifas")
         .select(
@@ -122,10 +123,13 @@ export default function PlanEditor() {
     setCfg(nuevoCfg);
 
     const estados: Record<string, string> = {};
-    for (const b of (pb.data as unknown as { beneficio_id: string; estado: string }[]) ?? []) {
+    const ocul: Record<string, boolean> = {};
+    for (const b of (pb.data as unknown as { beneficio_id: string; estado: string; oculto: boolean }[]) ?? []) {
       estados[b.beneficio_id] = b.estado;
+      ocul[b.beneficio_id] = b.oculto;
     }
     setBen(estados);
+    setOcultos(ocul);
 
     // Columnas de add-ons en la tabla de tarifas: los habilitados en el plan + los que ya tienen valores
     const usados = new Set<string>(pAddons.map((x) => x.addon_id));
@@ -251,12 +255,19 @@ export default function PlanEditor() {
     setMsgAddons({ tipo: "ok", texto: "Guardado." });
   };
 
+  // Los beneficios son propios de cada plan: un beneficio "está" en el plan si tiene fila en plan_beneficios.
+  const delPlan = beneficios.filter((b) => b.id in ben);
+  const visiblesPlan = delPlan.filter((b) => !ocultos[b.id]);
+  const ocultosPlan = delPlan.filter((b) => ocultos[b.id]);
+  const disponibles = beneficios.filter((b) => !(b.id in ben));
+
   const guardarBeneficios = async () => {
     setMsgBen(null);
-    const filas = beneficios.filter((b) => b.activo).map((b) => ({
+    const filas = delPlan.map((b) => ({
       plan_id: id,
       beneficio_id: b.id,
       estado: ben[b.id] ?? "incluido",
+      oculto: Boolean(ocultos[b.id]),
     }));
     const r = await supabase.from("plan_beneficios").upsert(filas, { onConflict: "plan_id,beneficio_id" });
     setMsgBen(r.error ? { tipo: "error", texto: r.error.message } : { tipo: "ok", texto: "Guardado." });
@@ -264,73 +275,71 @@ export default function PlanEditor() {
 
   const agregarBeneficio = async () => {
     setMsgBen(null);
-    const nombre = window.prompt("Nombre del nuevo beneficio (ej. Telemedicina)")?.trim();
+    const sugeridos = disponibles.length > 0 ? `\n\nYa existen (no usados en este plan): ${disponibles.map((x) => x.nombre).join(", ")}` : "";
+    const nombre = window.prompt(`Nombre del beneficio para ESTE plan (ej. Telemedicina)${sugeridos}`)?.trim();
     if (!nombre) return;
-    if (beneficios.some((b) => b.nombre.toLowerCase() === nombre.toLowerCase())) {
-      setMsgBen({ tipo: "error", texto: `"${nombre}" ya existe en la lista.` });
+    const existente = beneficios.find((x) => x.nombre.toLowerCase() === nombre.toLowerCase());
+    if (existente && existente.id in ben) {
+      setMsgBen({ tipo: "error", texto: `"${existente.nombre}" ya está en este plan.` });
       return;
     }
-    const orden = Math.max(0, ...beneficios.map((b) => b.orden ?? 0)) + 1;
-    const nuevo = await supabase.from("beneficios").insert({ nombre, orden }).select("id,nombre,orden,activo").single();
-    if (nuevo.error) {
-      setMsgBen({ tipo: "error", texto: nuevo.error.message });
-      return;
+    let b = existente;
+    if (!b) {
+      const orden = Math.max(0, ...beneficios.map((x) => x.orden ?? 0)) + 1;
+      const nuevo = await supabase.from("beneficios").insert({ nombre, orden }).select("id,nombre,orden,activo").single();
+      if (nuevo.error) {
+        setMsgBen({ tipo: "error", texto: nuevo.error.message });
+        return;
+      }
+      b = nuevo.data as { id: string; nombre: string; orden: number; activo: boolean };
+      setBeneficios([...beneficios, b]);
     }
-    const b = nuevo.data as { id: string; nombre: string; orden: number; activo: boolean };
-    // El beneficio es global: en los demás planes queda "No ofrecido" (no se afirma nada que no se sepa);
-    // en este plan queda "Incluido". Se corrige plan por plan.
-    const planes = await supabase.from("planes").select("id");
-    if (planes.error) {
-      setMsgBen({ tipo: "error", texto: planes.error.message });
-      return;
-    }
-    const filas = ((planes.data as { id: string }[]) ?? []).map((p) => ({
-      plan_id: p.id,
-      beneficio_id: b.id,
-      estado: p.id === id ? "incluido" : "no_ofrecido",
-    }));
-    const r = await supabase.from("plan_beneficios").upsert(filas, { onConflict: "plan_id,beneficio_id" });
+    const r = await supabase
+      .from("plan_beneficios")
+      .upsert({ plan_id: id, beneficio_id: b.id, estado: "incluido", oculto: false }, { onConflict: "plan_id,beneficio_id" });
     if (r.error) {
       setMsgBen({ tipo: "error", texto: r.error.message });
       return;
     }
-    setBeneficios([...beneficios, b]);
     setBen({ ...ben, [b.id]: "incluido" });
-    setMsgBen({
-      tipo: "ok",
-      texto: `"${b.nombre}" agregado: Incluido en este plan y No ofrecido en los demás. Ajusta cada plan según corresponda.`,
-    });
+    setOcultos({ ...ocultos, [b.id]: false });
+    setMsgBen({ tipo: "ok", texto: `"${b.nombre}" agregado solo a este plan (Incluido).` });
   };
 
-  const ocultarBeneficio = async (b: { id: string; nombre: string }, activo: boolean) => {
+  const ocultarBeneficio = async (b: { id: string; nombre: string }, oculto: boolean) => {
     setMsgBen(null);
-    const r = await supabase.from("beneficios").update({ activo }).eq("id", b.id);
+    const r = await supabase.from("plan_beneficios").update({ oculto }).eq("plan_id", id!).eq("beneficio_id", b.id);
     if (r.error) {
       setMsgBen({ tipo: "error", texto: r.error.message });
       return;
     }
-    setBeneficios(beneficios.map((x) => (x.id === b.id ? { ...x, activo } : x)));
+    setOcultos({ ...ocultos, [b.id]: oculto });
     setMsgBen({
       tipo: "ok",
-      texto: activo
-        ? `"${b.nombre}" se muestra de nuevo en todos los planes.`
-        : `"${b.nombre}" oculto en todos los planes: ya no sale en el PDF, el enlace ni esta lista. Puedes mostrarlo de nuevo abajo.`,
+      texto: oculto
+        ? `"${b.nombre}" oculto solo en este plan: no sale en su PDF ni en su enlace. Los demás planes no cambian.`
+        : `"${b.nombre}" se muestra de nuevo en este plan.`,
     });
   };
 
   const eliminarBeneficio = async (b: { id: string; nombre: string }) => {
     const ok = window.confirm(
-      `Vas a eliminar "${b.nombre}" de TODOS los planes. Desaparece del PDF y del enlace y no se puede deshacer. Si solo quieres dejar de mostrarlo, usa "Ocultar". ¿Eliminar?`,
+      `Vas a quitar "${b.nombre}" de ESTE plan. Los demás planes no cambian. Si solo quieres dejar de mostrarlo, usa "Ocultar". ¿Quitar?`,
     );
     if (!ok) return;
     setMsgBen(null);
-    const r = await supabase.from("beneficios").delete().eq("id", b.id);
+    const r = await supabase.from("plan_beneficios").delete().eq("plan_id", id!).eq("beneficio_id", b.id);
     if (r.error) {
       setMsgBen({ tipo: "error", texto: r.error.message });
       return;
     }
-    setBeneficios(beneficios.filter((x) => x.id !== b.id));
-    setMsgBen({ tipo: "ok", texto: `"${b.nombre}" eliminado.` });
+    const restoBen = { ...ben };
+    const restoOc = { ...ocultos };
+    delete restoBen[b.id];
+    delete restoOc[b.id];
+    setBen(restoBen);
+    setOcultos(restoOc);
+    setMsgBen({ tipo: "ok", texto: `"${b.nombre}" quitado de este plan. Puedes volver a agregarlo con "+ Agregar beneficio".` });
   };
 
   const eliminarPlan = async () => {
@@ -469,10 +478,10 @@ export default function PlanEditor() {
 
       <Seccion
         titulo="Beneficios"
-        ayuda="Aparecen en la tabla comparativa del PDF y del enlace. Por ahora todos están marcados como incluidos; corrígelos plan por plan."
+        ayuda="Son propios de este plan: ocultar, quitar o agregar aquí no afecta a los demás planes. Aparecen en la tabla comparativa del PDF y del enlace."
       >
         <div className="grid gap-2 md:grid-cols-2">
-          {beneficios.filter((b) => b.activo).map((b) => (
+          {visiblesPlan.map((b) => (
             <div key={b.id} className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 px-3 py-2">
               <span className="text-sm">{b.nombre}</span>
               <div className="flex items-center gap-1.5">
@@ -487,8 +496,8 @@ export default function PlanEditor() {
               </select>
               <button
                 type="button"
-                onClick={() => ocultarBeneficio(b, false)}
-                title="Ocultar en todos los planes (PDF y enlace)"
+                onClick={() => ocultarBeneficio(b, true)}
+                title="Ocultar solo en este plan (PDF y enlace)"
                 className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
               >
                 Ocultar
@@ -496,7 +505,7 @@ export default function PlanEditor() {
               <button
                 type="button"
                 onClick={() => eliminarBeneficio(b)}
-                title="Eliminar de todos los planes"
+                title="Quitar de este plan"
                 className="rounded-md border border-red-500/40 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10"
               >
                 Eliminar
@@ -505,21 +514,20 @@ export default function PlanEditor() {
             </div>
           ))}
         </div>
-        {beneficios.some((b) => !b.activo) && (
+        {ocultosPlan.length > 0 && (
           <details className="rounded-lg border border-zinc-800 p-3 text-sm">
             <summary className="cursor-pointer text-zinc-400">
-              Beneficios ocultos ({beneficios.filter((b) => !b.activo).length})
+              Beneficios ocultos en este plan ({ocultosPlan.length})
             </summary>
             <div className="mt-2 space-y-2">
-              {beneficios
-                .filter((b) => !b.activo)
+              {ocultosPlan
                 .map((b) => (
                   <div key={b.id} className="flex items-center justify-between gap-3">
                     <span className="text-zinc-400">{b.nombre}</span>
                     <div className="flex gap-1.5">
                       <button
                         type="button"
-                        onClick={() => ocultarBeneficio(b, true)}
+                        onClick={() => ocultarBeneficio(b, false)}
                         className="rounded-md border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800"
                       >
                         Mostrar
