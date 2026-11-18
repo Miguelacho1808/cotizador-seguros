@@ -5,6 +5,8 @@ import { telefonoWhatsApp } from "../lib/telefono";
 import { Aviso, Boton, type Mensaje } from "../components/ui";
 import { ESTADOS, colorEstado } from "./Cotizaciones";
 import { esMercantilPanama } from "../lib/premiumMercantilPanama";
+import EnviarEmail from "../components/EnviarEmail";
+import { useAuth } from "../lib/auth";
 import DocumentoCotizacion, { type PlanDoc } from "../components/DocumentoCotizacion";
 
 type Plan = {
@@ -38,6 +40,8 @@ type Cot = {
 export default function CotizacionDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { perfil } = useAuth();
+  const [verEmail, setVerEmail] = useState(false);
   const [cot, setCot] = useState<Cot | null>(null);
   const [benef, setBenef] = useState<Record<string, { nombre: string; estado: string; orden: number }[]>>({});
   const [org, setOrg] = useState<{ nombre: string; logo_url: string | null } | null>(null);
@@ -148,6 +152,9 @@ export default function CotizacionDetalle() {
           <Boton variante="secundario" onClick={whatsapp}>
             WhatsApp
           </Boton>
+          <Boton variante="secundario" onClick={() => setVerEmail(!verEmail)}>
+            Email
+          </Boton>
           <Boton variante="secundario" onClick={() => window.print()}>
             Imprimir / PDF
           </Boton>
@@ -165,6 +172,22 @@ export default function CotizacionDetalle() {
         </div>
       </div>
       <Aviso mensaje={msg} />
+
+      {verEmail && (
+        <EnviarEmail
+          para={cot.clientes?.email ?? ""}
+          onCerrar={() => setVerEmail(false)}
+          variables={{
+            cliente: cot.clientes?.nombre ?? "",
+            numero: String(cot.numero),
+            enlace,
+            aseguradoras: [...new Set(planes.map((p) => p.aseguradora_nombre))].join(", "),
+            desde: `US$ ${Math.min(...planes.map((p) => p.prima_anual)).toLocaleString("es-ES", { maximumFractionDigits: 0 })}`,
+            asesor: [perfil?.nombre, perfil?.apellido].filter(Boolean).join(" "),
+            empresa: org?.nombre ?? "",
+          }}
+        />
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <p className="text-sm text-zinc-400">

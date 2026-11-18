@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
+import PlantillasCorreo from "../components/PlantillasCorreo";
 import SubirLogo from "../components/SubirLogo";
 import { Aviso, Boton, Campo, Seccion, inputCls, type Mensaje } from "../components/ui";
 
@@ -85,6 +86,8 @@ export default function Configuracion() {
           }}
         />
       </Seccion>
+
+      <PlantillasCorreo />
     </div>
   );
 }
