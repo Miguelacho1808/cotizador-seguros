@@ -93,25 +93,14 @@ export default function Compartida() {
   return (
     <div className="min-h-screen bg-slate-100 pb-24 text-slate-900 print:min-h-0 print:bg-white print:pb-0" style={{ colorScheme: "light" }}>
       <div className="mx-auto max-w-xl print:max-w-none">
-        <header className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-5 text-white print:hidden">
-          <div className="flex h-14 w-24 items-center justify-center rounded-lg bg-white p-1.5">
-            {datos.organizacion?.logo_url ? (
-              <img src={datos.organizacion.logo_url} alt="" className="max-h-full max-w-full object-contain" />
-            ) : (
-              <span className="text-center text-[10px] font-bold leading-tight text-slate-800">
-                {datos.organizacion?.nombre}
-              </span>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-sm font-bold">♡ Cotización de Salud</p>
-            <p className="text-xs text-slate-300">
-              #{datos.numero} · {fecha}
-            </p>
-            <span className="mt-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-slate-900">
-              {GRUPO[datos.grupo] ?? datos.grupo}
-            </span>
-          </div>
+        <header className="bg-slate-900 px-4 py-7 text-center text-white print:hidden">
+          <p className="text-3xl font-extrabold tracking-tight">♡ Cotización de Salud</p>
+          <p className="mt-2 text-base text-slate-300">
+            #{datos.numero} · {fecha}
+          </p>
+          <span className="mt-3 inline-block rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-slate-900">
+            {GRUPO[datos.grupo] ?? datos.grupo}
+          </span>
         </header>
 
         <section className="space-y-2 bg-white px-4 py-4 print:hidden">
@@ -126,56 +115,6 @@ export default function Compartida() {
         </section>
 
         <div className="space-y-5 p-4 print:p-0">
-          <section className="overflow-hidden rounded-2xl bg-slate-900 text-white shadow-lg print:hidden">
-            <div className="space-y-2 p-4">
-              <span className="inline-block rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold">
-                ★ Mejor precio
-              </span>
-              <p className="text-xl font-bold">{calc.masBarata.aseguradora_nombre}</p>
-              <p className="text-sm text-slate-300">
-                {calc.masBarata.plan_nombre} · Cobertura USD {calc.masBarata.cobertura_monto.toLocaleString("es-VE")}
-              </p>
-            </div>
-            <div className="space-y-3 bg-slate-800 p-4">
-              <p className="text-center text-4xl font-extrabold">
-                {usd(cp(calc.masBarata).valor)} <span className="text-sm font-normal text-slate-300">{cp(calc.masBarata).periodo}</span>
-              </p>
-              <Boton p={calc.masBarata} clase="bg-emerald-500 hover:bg-emerald-600" texto="Asegurarme ahora →" />
-            </div>
-          </section>
-
-          <section className="space-y-2 print:hidden">
-            <p className="text-xs font-bold">Opciones rápidas</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5 rounded-xl border-2 border-emerald-400 bg-white p-3">
-                <span className="inline-block rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                  Plan Esencial
-                </span>
-                <p className="text-xs text-slate-600">Lo justo y necesario para estar protegido</p>
-                <p className="text-[10px] text-slate-400">Cobertura USD {calc.esencial.cobertura_monto.toLocaleString("es-VE")}</p>
-                <p className="text-xl font-extrabold">
-                  {usd(cp(calc.esencial).valor)} <span className="text-[10px] font-normal text-slate-400">{cp(calc.esencial).periodo}</span>
-                </p>
-                <p className="text-[10px] text-slate-400">{calc.esencial.aseguradora_nombre}</p>
-                <Boton p={calc.esencial} clase="bg-emerald-500 hover:bg-emerald-600 !py-1.5 !text-xs" texto="Elegir Plan Esencial →" />
-              </div>
-              {calc.prima && (
-                <div className="space-y-1.5 rounded-xl border-2 border-fuchsia-400 bg-white p-3">
-                  <span className="inline-block rounded-full bg-fuchsia-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                    Protección Prima
-                  </span>
-                  <p className="text-xs text-slate-600">Máxima tranquilidad y protección</p>
-                  <p className="text-[10px] text-slate-400">Cobertura USD {calc.prima.cobertura_monto.toLocaleString("es-VE")}</p>
-                  <p className="text-xl font-extrabold">
-                    {usd(cp(calc.prima).valor)} <span className="text-[10px] font-normal text-slate-400">{cp(calc.prima).periodo}</span>
-                  </p>
-                  <p className="text-[10px] text-slate-400">{calc.prima.aseguradora_nombre}</p>
-                  <Boton p={calc.prima} clase="bg-fuchsia-500 hover:bg-fuchsia-600 !py-1.5 !text-xs" texto="Obtener Prot. Prima →" />
-                </div>
-              )}
-            </div>
-          </section>
-
           <section className="space-y-3 print:hidden">
             <p className="text-xs font-bold">Opciones cotizadas</p>
             {calc.grupos.map((g) => (
