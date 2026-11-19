@@ -55,7 +55,7 @@ export default function Login() {
 
   return (
     <div
-      className="relative grid min-h-screen overflow-hidden text-white lg:grid-cols-2"
+      className="relative flex min-h-screen items-center justify-center overflow-hidden p-4 text-white sm:p-8"
       style={{ background: "radial-gradient(1200px 700px at 15% 10%, #0f4c5c 0%, transparent 60%), radial-gradient(900px 600px at 95% 90%, #1d3b8b 0%, transparent 55%), #071a24" }}
     >
       {/* cuadrícula sutil */}
@@ -65,8 +65,9 @@ export default function Login() {
         style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "48px 48px" }}
       />
 
+      <div className="relative grid w-full max-w-[1040px] overflow-hidden rounded-3xl border border-white/10 bg-[#071a24]/60 shadow-2xl backdrop-blur-sm lg:min-h-[600px] lg:grid-cols-2">
       {/* Lado de marca */}
-      <section className="relative hidden flex-col justify-between border-r border-white/5 bg-teal-300/[0.03] p-10 lg:flex xl:p-14">
+      <section className="relative hidden flex-col justify-between border-r border-white/5 bg-teal-300/[0.03] p-10 lg:flex">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-300 text-lg font-black text-teal-950" style={DISPLAY}>
             C
@@ -93,10 +94,10 @@ export default function Login() {
       </section>
 
       {/* Formulario */}
-      <main className="relative flex items-center justify-center p-6">
+      <main className="relative flex items-center justify-center p-6 lg:p-10">
         <form
           onSubmit={enviar}
-          className="w-full max-w-sm space-y-5 rounded-3xl border border-white/10 bg-[#0b2230]/70 p-8 shadow-2xl backdrop-blur-xl"
+          className="w-full max-w-sm space-y-5"
         >
           <div className="flex items-center gap-3 lg:hidden">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-300 font-black text-teal-950" style={DISPLAY}>
@@ -165,6 +166,7 @@ export default function Login() {
           <p className="text-center text-xs text-white/40">¿Sin acceso? Pídele a tu administrador que active tu cuenta.</p>
         </form>
       </main>
+      </div>
     </div>
   );
 }
