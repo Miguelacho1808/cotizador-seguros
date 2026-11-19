@@ -55,7 +55,7 @@ export default function Login() {
 
   return (
     <div
-      className="relative flex min-h-screen overflow-hidden text-white"
+      className="relative flex min-h-screen items-center justify-center overflow-hidden text-white"
       style={{ background: "radial-gradient(1200px 700px at 15% 10%, #0f4c5c 0%, transparent 60%), radial-gradient(900px 600px at 95% 90%, #1d3b8b 0%, transparent 55%), #071a24" }}
     >
       {/* cuadrícula sutil */}
@@ -65,16 +65,17 @@ export default function Login() {
         style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "48px 48px" }}
       />
 
+      <div className="relative flex w-full max-w-6xl items-center justify-center gap-10 p-6 lg:gap-14 lg:p-10">
       {/* Lado de marca */}
-      <section className="relative hidden flex-1 flex-col justify-between p-12 lg:flex">
-        <div className="flex items-center gap-3">
+      <section className="relative hidden w-[520px] shrink-0 flex-col justify-center lg:flex">
+        <div className="mb-6 flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-300 text-lg font-black text-teal-950" style={DISPLAY}>
             C
           </span>
           <span className="text-sm font-semibold tracking-wide text-white/80">Cotizador de Seguros</span>
         </div>
 
-        <div className="relative my-10 h-[360px]">
+        <div className="relative mb-8 h-[340px]">
           <Tarjeta nombre="Opción A" plan="Salud Integral · $100.000" precio="$65" className="left-0 top-4 [--r:-4deg]" />
           <Tarjeta nombre="Opción B" plan="Salud Plus · $100.000" precio="$57" estrella className="left-44 top-24 [--r:2deg] [animation-delay:-2s]" />
           <Tarjeta nombre="Opción C" plan="Salud Global · $250.000" precio="$91" className="left-16 top-52 [--r:-1deg] [animation-delay:-4s]" />
@@ -93,7 +94,7 @@ export default function Login() {
       </section>
 
       {/* Formulario */}
-      <main className="relative flex w-full items-center justify-center p-6 lg:w-[520px] lg:shrink-0">
+      <main className="relative flex w-full items-center justify-center lg:w-auto lg:shrink-0">
         <form
           onSubmit={enviar}
           className="w-full max-w-sm space-y-5 rounded-3xl border border-white/10 bg-[#0b2230]/70 p-8 shadow-2xl backdrop-blur-xl"
@@ -165,6 +166,7 @@ export default function Login() {
           <p className="text-center text-xs text-white/40">¿Sin acceso? Pídele a tu administrador que active tu cuenta.</p>
         </form>
       </main>
+      </div>
     </div>
   );
 }
