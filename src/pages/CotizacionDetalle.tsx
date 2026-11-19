@@ -5,8 +5,8 @@ import { telefonoWhatsApp } from "../lib/telefono";
 import { Aviso, Boton, type Mensaje } from "../components/ui";
 import { ESTADOS, colorEstado } from "./Cotizaciones";
 import { esMercantilPanama } from "../lib/premiumMercantilPanama";
-import EnviarEmail from "../components/EnviarEmail";
-import { tablaPlanesHtml, variablesCorreo } from "../lib/plantillasCorreo";
+import { aplicarVariables, htmlDePlantilla, tablaPlanesHtml, variablesCorreo, type Plantilla } from "../lib/plantillasCorreo";
+import { cuotasDelPlan } from "../lib/calculo";
 import { useAuth } from "../lib/auth";
 import DocumentoCotizacion, { type PlanDoc } from "../components/DocumentoCotizacion";
 
@@ -42,7 +42,7 @@ export default function CotizacionDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { perfil } = useAuth();
-  const [verEmail, setVerEmail] = useState(false);
+  const [enviandoCorreo, setEnviandoCorreo] = useState(false);
   const [asesorWa, setAsesorWa] = useState("");
   useEffect(() => {
     if (!perfil) return;
@@ -138,6 +138,79 @@ export default function CotizacionDetalle() {
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
   };
 
+  const enviarCorreo = async () => {
+    let para = cot.clientes?.email?.trim() ?? "";
+    if (!para) para = window.prompt("El cliente no tiene correo guardado. ¿A qué correo envías la cotización?")?.trim() ?? "";
+    if (!para) return;
+    setEnviandoCorreo(true);
+    setMsg(null);
+    const pl = await supabase
+      .from("plantillas_correo")
+      .select("id,nombre,asunto,cuerpo,predeterminada,html,bloques,updated_at")
+      .order("predeterminada", { ascending: false })
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+    const plantilla = pl.data as unknown as Plantilla | null;
+    if (!plantilla) {
+      setEnviandoCorreo(false);
+      return setMsg({ tipo: "error", texto: "No hay plantillas de email: crea una en Configuraciones." });
+    }
+    const orden = [...planes].sort((a, b) => a.aseguradora_nombre.localeCompare(b.aseguradora_nombre) || a.cobertura_monto - b.cobertura_monto);
+    const valorCuota = (p: Plan, clave: string) => {
+      const l = cuotasDelPlan(p.prima_anual, p.desglose?.cuotas).find((x) => x.clave === clave);
+      return l ? l.valor : null;
+    };
+    const vistos = new Set<string>();
+    const nombresBen: string[] = [];
+    for (const p of orden)
+      for (const b of (p.plan_id && benef[p.plan_id]) || [])
+        if (b.estado === "incluido" && !vistos.has(b.nombre)) {
+          vistos.add(b.nombre);
+          nombresBen.push(b.nombre);
+        }
+    const vars = variablesCorreo({
+      orgNombre: org?.nombre ?? "",
+      orgLogo: org?.logo_url ?? null,
+      cliente: cot.clientes?.nombre ?? "",
+      numero: cot.numero,
+      enlace,
+      asesor: [perfil?.nombre, perfil?.apellido].filter(Boolean).join(" "),
+      whatsapp: asesorWa,
+      planesTabla: tablaPlanesHtml(
+        orden.map((p) => ({
+          aseguradora: p.aseguradora_nombre,
+          logo: p.plan_id ? (logos[p.plan_id] ?? null) : null,
+          plan: p.plan_nombre,
+          tipo: p.desglose?.tipo ?? "hcm",
+          cobertura: p.cobertura_monto,
+          coberturas: [...((p.plan_id && benef[p.plan_id]) || []).filter((b) => b.estado === "incluido").map((b) => b.nombre).slice(0, 3), ...p.addons].slice(0, 5),
+          mensual: valorCuota(p, "mensual"),
+          trimestral: valorCuota(p, "trimestral"),
+          anual: valorCuota(p, "anual") ?? p.prima_anual,
+        })),
+        nombresBen,
+        new Set(planes.map((p) => p.plan_id)).size,
+      ),
+      aseguradoras: [...new Set(planes.map((p) => p.aseguradora_nombre))].join(", "),
+      desde: `US$ ${Math.min(...planes.map((p) => p.prima_anual)).toLocaleString("es-ES", { maximumFractionDigits: 0 })}`,
+    });
+    const r = await supabase.functions.invoke("enviar-correo", {
+      body: {
+        accion: "enviar",
+        para,
+        asunto: aplicarVariables(plantilla.asunto, vars),
+        cuerpo: aplicarVariables(plantilla.cuerpo, vars),
+        html: aplicarVariables(htmlDePlantilla(plantilla), vars),
+      },
+    });
+    setEnviandoCorreo(false);
+    const d = r.data as { ok?: boolean; error?: string } | null;
+    if (r.error || !d?.ok) return setMsg({ tipo: "error", texto: d?.error ?? r.error?.message ?? "No se pudo enviar el correo." });
+    setMsg({ tipo: "ok", texto: `Correo enviado a ${para} con la plantilla "${plantilla.nombre}".` });
+    if (cot.estado === "borrador") void cambiarEstado("enviada");
+  };
+
   const eliminar = async () => {
     if (!window.confirm(`¿Eliminar la cotización #${cot.numero}? No se puede deshacer.`)) return;
     const r = await supabase.from("cotizaciones").delete().eq("id", cot.id);
@@ -161,8 +234,8 @@ export default function CotizacionDetalle() {
           <Boton variante="secundario" onClick={whatsapp}>
             WhatsApp
           </Boton>
-          <Boton variante="secundario" onClick={() => setVerEmail(!verEmail)}>
-            Email
+          <Boton variante="secundario" onClick={enviarCorreo} disabled={enviandoCorreo}>
+            {enviandoCorreo ? "Enviando…" : "Enviar correo"}
           </Boton>
           <Boton variante="secundario" onClick={() => window.print()}>
             Imprimir / PDF
@@ -181,37 +254,6 @@ export default function CotizacionDetalle() {
         </div>
       </div>
       <Aviso mensaje={msg} />
-
-      {verEmail && (
-        <EnviarEmail
-          para={cot.clientes?.email ?? ""}
-          onCerrar={() => setVerEmail(false)}
-          onEnviado={() => cot.estado === "borrador" && cambiarEstado("enviada")}
-          variables={variablesCorreo({
-            orgNombre: org?.nombre ?? "",
-            orgLogo: org?.logo_url ?? null,
-            cliente: cot.clientes?.nombre ?? "",
-            numero: cot.numero,
-            enlace,
-            asesor: [perfil?.nombre, perfil?.apellido].filter(Boolean).join(" "),
-            whatsapp: asesorWa,
-            planesTabla: tablaPlanesHtml(
-              [...planes]
-                .sort((a, b) => a.aseguradora_nombre.localeCompare(b.aseguradora_nombre) || a.cobertura_monto - b.cobertura_monto)
-                .map((p) => ({
-                  aseguradora: p.aseguradora_nombre,
-                  plan: p.plan_nombre,
-                  cobertura: p.cobertura_monto,
-                  deducible: p.deducible,
-                  mensual: p.prima_mensual,
-                  anual: p.prima_anual,
-                })),
-            ),
-            aseguradoras: [...new Set(planes.map((p) => p.aseguradora_nombre))].join(", "),
-            desde: `US$ ${Math.min(...planes.map((p) => p.prima_anual)).toLocaleString("es-ES", { maximumFractionDigits: 0 })}`,
-          })}
-        />
-      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <p className="text-sm text-zinc-400">

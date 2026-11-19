@@ -40,10 +40,10 @@ export function bloqueNuevo(tipo: Bloque["tipo"]): Bloque {
         id,
         tipo,
         titulo: "Hola, {{cliente_nombre}}",
-        texto: "Te compartimos tu cotización #{{cotizacion_numero}} de seguros de personas.\nPuedes ver el detalle completo de los planes comparados en el enlace.",
+        texto: "Te compartimos tu cotización #{{cotizacion_numero}} de seguros de personas.\nPuedes descargar el PDF con el detalle completo de los planes comparados.",
       };
     case "tabla":
-      return { id, tipo, titulo: "Planes cotizados" };
+      return { id, tipo, titulo: "" };
     case "boton":
       return { id, tipo, texto: "Ver cotización", enlace: "{{enlace}}" };
     case "texto":
@@ -59,7 +59,6 @@ export const bloquesPorDefecto = (): Bloque[] => [
   bloqueNuevo("header"),
   bloqueNuevo("saludo"),
   bloqueNuevo("tabla"),
-  bloqueNuevo("boton"),
   bloqueNuevo("footer"),
 ];
 
@@ -76,7 +75,7 @@ export function bloquesAHtml(bloques: Bloque[]): string {
         case "header":
           return `<tr><td style="background:#f8fafc;padding:28px 32px;border-bottom:3px solid ${TEAL}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-${b.logo ? `<td width="1" style="padding-right:16px;vertical-align:middle">{{org_logo_img}}</td>` : ""}
+${b.logo ? `<td style="width:1%;white-space:nowrap;padding-right:16px;vertical-align:middle">{{org_logo_img}}</td>` : ""}
 <td style="vertical-align:middle"><div style="font-size:22px;font-weight:700;color:${AZUL};font-family:Georgia,serif">${b.titulo}</div>
 <div style="font-size:11px;letter-spacing:2px;color:${TEAL};margin-top:4px">${b.subtitulo}</div></td></tr></table></td></tr>`;
         case "saludo":
@@ -158,17 +157,62 @@ export function variablesCorreo(d: {
   };
 }
 
-export type PlanTabla = { aseguradora: string; plan: string; cobertura: number; deducible: number; mensual: number; anual: number };
-const usd = (n: number) => `US$ ${Math.round(n).toLocaleString("es-ES", { maximumFractionDigits: 0 })}`;
+export type PlanTabla = {
+  aseguradora: string;
+  logo: string | null;
+  plan: string;
+  tipo: string;
+  cobertura: number;
+  coberturas: string[];
+  mensual: number | null;
+  trimestral: number | null;
+  anual: number | null;
+};
+const num = (n: number) => Math.round(n).toLocaleString("es-ES", { maximumFractionDigits: 0 });
+const monto = (n: number | null) => (n === null ? "—" : `$${num(n)}`);
 
-export function tablaPlanesHtml(planes: PlanTabla[]): string {
-  const th = "padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb;background:#f8fafc";
-  const td = "padding:9px 10px;font-size:13px;color:#1f2937;border-bottom:1px solid #eef2f7";
-  const filas = planes
-    .map(
-      (p) =>
-        `<tr><td style="${td}"><b>${esc(p.aseguradora)}</b><br><span style="color:#6b7280;font-size:12px">${esc(p.plan)}</span></td><td style="${td}">${usd(p.cobertura)}</td><td style="${td}">${p.deducible > 0 ? usd(p.deducible) : "—"}</td><td style="${td};text-align:right">${usd(p.mensual)}<br><span style="color:#6b7280;font-size:11px">${usd(p.anual)}/año</span></td></tr>`,
-    )
-    .join("");
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;border-collapse:separate"><tr><th style="${th}">Plan</th><th style="${th}">Cobertura</th><th style="${th}">Deducible</th><th style="${th};text-align:right">Prima</th></tr>${filas}</table>`;
+/** Tabla de planes agrupada por aseguradora + leyenda + beneficios, como el correo de la app original. */
+export function tablaPlanesHtml(planes: PlanTabla[], beneficios: string[] = [], nPolizas = 0): string {
+  const th = "padding:8px 10px;font-size:11px;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;background:#f8fafc";
+  const td = "padding:10px;font-size:13px;color:#1f2937;border-bottom:1px solid #eef2f7;vertical-align:middle";
+  const chip = (t: string, color: string) =>
+    `<span style="display:inline-block;border:1px solid ${color};color:#0f766e;background:#ecfdf5;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;margin-right:4px">${esc(t)}</span>`;
+  const grupos = new Map<string, PlanTabla[]>();
+  for (const p of planes) grupos.set(p.aseguradora, [...(grupos.get(p.aseguradora) ?? []), p]);
+  let filas = "";
+  for (const [nombre, lista] of grupos) {
+    const logo = lista[0].logo
+      ? `<img src="${esc(lista[0].logo)}" alt="" height="26" style="vertical-align:middle;max-height:26px;max-width:110px;margin-right:10px;background:#fff">`
+      : "";
+    filas += `<tr><td colspan="5" style="padding:10px;background:#f1f5f9;border-bottom:1px solid #e5e7eb;font-family:Georgia,serif;font-size:15px;font-weight:700;color:${AZUL}">${logo}<span style="vertical-align:middle">${esc(nombre)}</span></td></tr>`;
+    for (const p of lista)
+      filas += `<tr>
+<td style="${td}"><b style="font-size:14px">$${num(p.cobertura)}</b><br><span style="line-height:22px">${chip(p.plan, "#5eead4")}${chip(p.tipo.toUpperCase(), "#5eead4")}</span></td>
+<td style="${td};font-size:11px;color:#6b7280;line-height:1.4">${esc(p.coberturas.join(" · "))}</td>
+<td style="${td};text-align:right;font-weight:700">${monto(p.mensual)}</td>
+<td style="${td};text-align:right;font-weight:700">${monto(p.trimestral)}</td>
+<td style="${td};text-align:right;font-weight:700">${monto(p.anual)}</td></tr>`;
+  }
+  const tabla = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-collapse:collapse;font-family:Arial,sans-serif"><tr><th style="${th};text-align:left">Monto cobertura</th><th style="${th};text-align:left">Coberturas</th><th style="${th};text-align:right">Mensual</th><th style="${th};text-align:right">Trimestral</th><th style="${th};text-align:right">Anual</th></tr>${filas}</table>`;
+  const leyenda = `<div style="margin-top:12px;border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;font-family:Arial,sans-serif;font-size:10px;color:#6b7280;line-height:1.6"><b style="color:#374151">Leyenda de Coberturas</b> &nbsp; <b>HCM:</b> Hospitalización y Cirugía · <b>FUN:</b> Funerario · <b>VIA:</b> Viaje · <b>AMD:</b> Atención Médica Domiciliaria (Home Medical Care) · <b>MAT:</b> Maternidad</div>`;
+  let ben = "";
+  if (beneficios.length > 0) {
+    const celdas = beneficios
+      .map((b) => `<td width="25%" style="padding:3px"><div style="border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;padding:7px 6px;font-family:Arial,sans-serif;font-size:10px;color:#374151;text-align:center">${esc(b)}</div></td>`)
+      .join("");
+    // 4 por fila
+    const celdasArr = beneficios.map((b) => `<td width="25%" style="padding:3px;vertical-align:top"><div style="border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;padding:7px 6px;font-family:Arial,sans-serif;font-size:10px;color:#374151;text-align:center">${esc(b)}</div></td>`);
+    void celdas;
+    let rows = "";
+    for (let i = 0; i < celdasArr.length; i += 4) {
+      const grupo = celdasArr.slice(i, i + 4);
+      while (grupo.length < 4) grupo.push(`<td width="25%"></td>`);
+      rows += `<tr>${grupo.join("")}</tr>`;
+    }
+    ben = `<div style="margin-top:18px;text-align:center;font-family:Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;color:#374151">BENEFICIOS DE LAS ${nPolizas} PÓLIZAS DE SALUD</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px">${rows}</table>
+<div style="margin-top:10px;background:#0b6bb5;border-radius:6px;padding:12px;text-align:center;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#ffffff">Atención Médica Domiciliaria y Médico Online</div>
+<div style="margin-top:6px;text-align:center;font-family:Arial,sans-serif;font-size:9px;font-style:italic;color:#9ca3af">Los beneficios pueden variar según el plan y las aseguradoras seleccionadas.</div>`;
+  }
+  return tabla + leyenda + ben;
 }

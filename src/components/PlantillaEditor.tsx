@@ -19,8 +19,8 @@ const ANCHOS = { escritorio: "100%", tablet: "768px", movil: "375px" } as const;
 export default function PlantillaEditor({ plantilla, onVolver }: { plantilla: Plantilla; onVolver: () => void }) {
   const { perfil } = useAuth();
   const [nombre, setNombre] = useState(plantilla.nombre);
-  const [asunto, setAsunto] = useState(plantilla.asunto);
-  const [cuerpo, setCuerpo] = useState(plantilla.cuerpo);
+  const asunto = plantilla.asunto;
+  const cuerpo = plantilla.cuerpo;
   const [bloques, setBloques] = useState<Bloque[]>(plantilla.bloques ?? []);
   const [codigo, setCodigo] = useState<string | null>(plantilla.bloques ? null : plantilla.html);
   const [disp, setDisp] = useState<keyof typeof ANCHOS>("escritorio");
@@ -52,10 +52,14 @@ export default function PlantillaEditor({ plantilla, onVolver }: { plantilla: Pl
       enlace: "#",
       asesor: [perfil?.nombre, perfil?.apellido].filter(Boolean).join(" ") || "Tu nombre",
       whatsapp: wa || "+58 424 000 0000",
-      planesTabla: tablaPlanesHtml([
-        { aseguradora: "Aseguradora A", plan: "Salud Integral", cobertura: 100000, deducible: 0, mensual: 65, anual: 772 },
-        { aseguradora: "Aseguradora B", plan: "Salud Plus", cobertura: 100000, deducible: 500, mensual: 57, anual: 675 },
-      ]),
+      planesTabla: tablaPlanesHtml(
+        [
+          { aseguradora: "Aseguradora A", logo: null, plan: "Salud", tipo: "hcm", cobertura: 100000, coberturas: ["Hospitalización y Cirugía", "Viajes", "Funerario"], mensual: 73, trimestral: 219, anual: 873 },
+          { aseguradora: "Aseguradora B", logo: null, plan: "Salud Plus", tipo: "hcm", cobertura: 100000, coberturas: ["Hospitalización y Cirugía", "Funerario"], mensual: null, trimestral: 183, anual: 729 },
+        ],
+        ["Hospitalización y Cirugía", "Sin Deducible", "Entrega de Medicamentos", "Cartas Avales y Reembolsos", "Cobertura Nacional", "Servicio de APS", "Emergencias 24/7", "Servicio de Ambulancia"],
+        2,
+      ),
       aseguradoras: "Aseguradora A, Aseguradora B",
       desde: "US$ 675",
     });
@@ -145,17 +149,6 @@ export default function PlantillaEditor({ plantilla, onVolver }: { plantilla: Pl
         </div>
 
         <div className="space-y-3">
-          <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3">
-            <label className="block text-xs text-zinc-400">
-              Asunto del correo
-              <input value={asunto} onChange={(e) => setAsunto(e.target.value)} className={`${inputCls} mt-1`} />
-            </label>
-            <label className="block text-xs text-zinc-400">
-              Texto alternativo (Gmail / correo simple)
-              <textarea rows={4} value={cuerpo} onChange={(e) => setCuerpo(e.target.value)} className={`${inputCls} mt-1`} />
-            </label>
-          </div>
-
           {codigo !== null ? (
             <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3">
               <p className="text-xs text-zinc-400">HTML del correo (estilos en línea):</p>
