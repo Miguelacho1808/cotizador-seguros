@@ -76,3 +76,8 @@ body {
     break-inside: avoid;
   }
 }
+
+/* Pantalla de acceso */
+@keyframes login-flota { 0%,100% { transform: translateY(0) rotate(var(--r,0deg)); } 50% { transform: translateY(-10px) rotate(var(--r,0deg)); } }
+.login-flota { animation: login-flota 7s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .login-flota { animation: none; } }
