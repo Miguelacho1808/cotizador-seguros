@@ -62,6 +62,9 @@ export const bloquesPorDefecto = (): Bloque[] => [
   bloqueNuevo("footer"),
 ];
 
+// Adaptación a pantallas pequeñas (correo y vista móvil): menos margen, se oculta la columna de coberturas
+// y los beneficios pasan a 2 por fila.
+const ESTILO_MOVIL = `<style>@media only screen and (max-width:480px){.px{padding-left:14px!important;padding-right:14px!important}.hm{display:none!important}.pc{padding:8px 5px!important;font-size:12px!important}.gb{display:inline-block!important;width:50%!important;box-sizing:border-box}.gv{display:none!important}}</style>`;
 const AZUL = "#1e3a5f";
 const TEAL = "#3aa6a6";
 const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -73,30 +76,30 @@ export function bloquesAHtml(bloques: Bloque[]): string {
     .map((b) => {
       switch (b.tipo) {
         case "header":
-          return `<tr><td style="background:#f8fafc;padding:28px 32px;border-bottom:3px solid ${TEAL}">
+          return `<tr><td class="px" style="background:#f8fafc;padding:28px 32px;border-bottom:3px solid ${TEAL}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
 ${b.logo ? `<td style="width:1%;white-space:nowrap;padding-right:16px;vertical-align:middle">{{org_logo_img}}</td>` : ""}
 <td style="vertical-align:middle"><div style="font-size:22px;font-weight:700;color:${AZUL};font-family:Georgia,serif">${b.titulo}</div>
 <div style="font-size:11px;letter-spacing:2px;color:${TEAL};margin-top:4px">${b.subtitulo}</div></td></tr></table></td></tr>`;
         case "saludo":
-          return `<tr><td style="padding:28px 32px 8px;font-family:Georgia,serif;color:#1f2937">
+          return `<tr><td class="px" style="padding:28px 32px 8px;font-family:Georgia,serif;color:#1f2937">
 <div style="font-size:18px;font-weight:700;color:${AZUL};margin-bottom:10px">${b.titulo}</div>
 <div style="font-size:14px;line-height:1.6">${nl2br(b.texto)}</div></td></tr>`;
         case "tabla":
-          return `<tr><td style="padding:12px 32px;font-family:Arial,sans-serif">
+          return `<tr><td class="px" style="padding:12px 32px;font-family:Arial,sans-serif">
 ${b.titulo ? `<div style="font-size:13px;font-weight:700;color:${AZUL};margin-bottom:8px">${b.titulo}</div>` : ""}{{planes_tabla}}</td></tr>`;
         case "boton":
-          return `<tr><td align="center" style="padding:18px 32px"><a href="${b.enlace}" style="display:inline-block;background:${TEAL};color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px">${b.texto}</a></td></tr>`;
+          return `<tr><td align="center" class="px" style="padding:18px 32px"><a href="${b.enlace}" style="display:inline-block;background:${TEAL};color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px">${b.texto}</a></td></tr>`;
         case "texto":
-          return `<tr><td style="padding:12px 32px;font-family:Georgia,serif;font-size:14px;line-height:1.6;color:#1f2937">${nl2br(b.texto)}</td></tr>`;
+          return `<tr><td class="px" style="padding:12px 32px;font-family:Georgia,serif;font-size:14px;line-height:1.6;color:#1f2937">${nl2br(b.texto)}</td></tr>`;
         case "separador":
-          return `<tr><td style="padding:8px 32px"><div style="border-top:1px solid #e5e7eb"></div></td></tr>`;
+          return `<tr><td class="px" style="padding:8px 32px"><div style="border-top:1px solid #e5e7eb"></div></td></tr>`;
         case "footer":
-          return `<tr><td align="center" style="background:${AZUL};color:#ffffff;padding:18px 32px;font-family:Georgia,serif;font-size:12px">${b.texto}</td></tr>`;
+          return `<tr><td align="center" class="px" style="background:${AZUL};color:#ffffff;padding:18px 32px;font-family:Georgia,serif;font-size:12px">${b.texto}</td></tr>`;
       }
     })
     .join("\n");
-  return `<div style="background:#eef2f7;padding:24px 12px"><table role="presentation" align="center" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden">
+  return `${ESTILO_MOVIL}<div style="background:#eef2f7;padding:24px 12px"><table role="presentation" align="center" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden">
 ${filas}
 </table></div>`;
 }
@@ -184,16 +187,16 @@ export function tablaPlanesHtml(planes: PlanTabla[], beneficios: string[] = [], 
     const logo = lista[0].logo
       ? `<img src="${esc(lista[0].logo)}" alt="" height="26" style="vertical-align:middle;max-height:26px;max-width:110px;margin-right:10px;background:#fff">`
       : "";
-    filas += `<tr><td colspan="5" style="padding:10px;background:#f1f5f9;border-bottom:1px solid #e5e7eb;font-family:Georgia,serif;font-size:15px;font-weight:700;color:${AZUL}">${logo}<span style="vertical-align:middle">${esc(nombre)}</span></td></tr>`;
+    filas += `<tr><td colspan="5" class="pc" style="padding:10px;background:#f1f5f9;border-bottom:1px solid #e5e7eb;font-family:Georgia,serif;font-size:15px;font-weight:700;color:${AZUL}">${logo}<span style="vertical-align:middle">${esc(nombre)}</span></td></tr>`;
     for (const p of lista)
       filas += `<tr>
-<td style="${td}"><b style="font-size:14px">$${num(p.cobertura)}</b><br><span style="line-height:22px">${chip(p.plan, "#5eead4")}${chip(p.tipo.toUpperCase(), "#5eead4")}</span></td>
-<td style="${td};font-size:11px;color:#6b7280;line-height:1.4">${esc(p.coberturas.join(" · "))}</td>
-<td style="${td};text-align:right;font-weight:700">${monto(p.mensual)}</td>
-<td style="${td};text-align:right;font-weight:700">${monto(p.trimestral)}</td>
-<td style="${td};text-align:right;font-weight:700">${monto(p.anual)}</td></tr>`;
+<td class="pc" style="${td}"><b style="font-size:14px">$${num(p.cobertura)}</b><br><span style="line-height:22px">${chip(p.plan, "#5eead4")}${chip(p.tipo.toUpperCase(), "#5eead4")}</span></td>
+<td class="hm" style="${td};font-size:11px;color:#6b7280;line-height:1.4">${esc(p.coberturas.join(" · "))}</td>
+<td class="pc" style="${td};text-align:right;font-weight:700">${monto(p.mensual)}</td>
+<td class="pc" style="${td};text-align:right;font-weight:700">${monto(p.trimestral)}</td>
+<td class="pc" style="${td};text-align:right;font-weight:700">${monto(p.anual)}</td></tr>`;
   }
-  const tabla = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-collapse:collapse;font-family:Arial,sans-serif"><tr><th style="${th};text-align:left">Monto cobertura</th><th style="${th};text-align:left">Coberturas</th><th style="${th};text-align:right">Mensual</th><th style="${th};text-align:right">Trimestral</th><th style="${th};text-align:right">Anual</th></tr>${filas}</table>`;
+  const tabla = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-collapse:collapse;font-family:Arial,sans-serif;table-layout:auto;word-break:break-word"><tr><th class="pc" style="${th};text-align:left">Monto cobertura</th><th class="hm" style="${th};text-align:left">Coberturas</th><th class="pc" style="${th};text-align:right">Mensual</th><th class="pc" style="${th};text-align:right">Trimestral</th><th class="pc" style="${th};text-align:right">Anual</th></tr>${filas}</table>`;
   const leyenda = `<div style="margin-top:12px;border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;font-family:Arial,sans-serif;font-size:10px;color:#6b7280;line-height:1.6"><b style="color:#374151">Leyenda de Coberturas</b> &nbsp; <b>HCM:</b> Hospitalización y Cirugía · <b>FUN:</b> Funerario · <b>VIA:</b> Viaje · <b>AMD:</b> Atención Médica Domiciliaria (Home Medical Care) · <b>MAT:</b> Maternidad</div>`;
   let ben = "";
   if (beneficios.length > 0) {
@@ -201,12 +204,12 @@ export function tablaPlanesHtml(planes: PlanTabla[], beneficios: string[] = [], 
       .map((b) => `<td width="25%" style="padding:3px"><div style="border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;padding:7px 6px;font-family:Arial,sans-serif;font-size:10px;color:#374151;text-align:center">${esc(b)}</div></td>`)
       .join("");
     // 4 por fila
-    const celdasArr = beneficios.map((b) => `<td width="25%" style="padding:3px;vertical-align:top"><div style="border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;padding:7px 6px;font-family:Arial,sans-serif;font-size:10px;color:#374151;text-align:center">${esc(b)}</div></td>`);
+    const celdasArr = beneficios.map((b) => `<td class="gb" width="25%" style="padding:3px;vertical-align:top"><div style="border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;padding:7px 6px;font-family:Arial,sans-serif;font-size:10px;color:#374151;text-align:center">${esc(b)}</div></td>`);
     void celdas;
     let rows = "";
     for (let i = 0; i < celdasArr.length; i += 4) {
       const grupo = celdasArr.slice(i, i + 4);
-      while (grupo.length < 4) grupo.push(`<td width="25%"></td>`);
+      while (grupo.length < 4) grupo.push(`<td class="gv" width="25%"></td>`);
       rows += `<tr>${grupo.join("")}</tr>`;
     }
     ben = `<div style="margin-top:18px;text-align:center;font-family:Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;color:#374151">BENEFICIOS DE LAS ${nPolizas} PÓLIZAS DE SALUD</div>
