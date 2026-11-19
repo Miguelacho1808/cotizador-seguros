@@ -1,3 +1,4 @@
+import { opcionesMonto, useMontosCatalogo } from "../lib/montosCatalogo";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -664,6 +665,7 @@ function FilaTarifa({
   );
   const [estado, setEstado] = useState<Mensaje | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const catalogo = useMontosCatalogo();
 
   const guardar = async () => {
     setEstado(null);
@@ -765,7 +767,16 @@ function FilaTarifa({
 
   return (
     <tr className="border-t border-zinc-800 align-top">
-      <td className="px-2 py-1">{campo("monto")}</td>
+      <td className="px-2 py-1">
+        <select value={v.monto} onChange={(e) => setV({ ...v, monto: e.target.value })} className={inputChico}>
+          <option value="">Cobertura…</option>
+          {opcionesMonto(catalogo, numero(v.monto) || null).map((m) => (
+            <option key={m} value={String(m)}>
+              ${m.toLocaleString("en-US")}
+            </option>
+          ))}
+        </select>
+      </td>
       <td className="px-2 py-1">{campo("emin")}</td>
       <td className="px-2 py-1">{campo("emax")}</td>
       {porGrupo && <td className="px-2 py-1">{campo("tam")}</td>}

@@ -1,3 +1,4 @@
+import { opcionesMonto, useMontosCatalogo } from "../lib/montosCatalogo";
 import { useCallback, useEffect, useState } from "react";
 import Papa from "papaparse";
 import { supabase } from "../lib/supabase";
@@ -44,6 +45,7 @@ export default function Tarifario() {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [msg, setMsg] = useState<Mensaje | null>(null);
   const [edit, setEdit] = useState<FilaTarifa | null>(null);
+  const catalogoMontos = useMontosCatalogo();
   const [importar, setImportar] = useState(false);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [estado, setEstado] = useState<string | null>(null);
@@ -542,12 +544,26 @@ export default function Tarifario() {
                 ] as [string, keyof FilaTarifa][]
               ).map(([et, k]) => (
                 <Campo key={k} etiqueta={et}>
+                  {k === "cobertura_monto" ? (
+                    <select
+                      value={String(edit.cobertura_monto)}
+                      onChange={(e) => setEdit({ ...edit, cobertura_monto: Number(e.target.value) })}
+                      className={inputCls}
+                    >
+                      {opcionesMonto(catalogoMontos, Number(edit.cobertura_monto)).map((m) => (
+                        <option key={m} value={String(m)}>
+                          ${m.toLocaleString("en-US")}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
                   <input
                     type="number"
                     value={String(edit[k] ?? "")}
                     onChange={(e) => setEdit({ ...edit, [k]: e.target.value === "" ? 0 : Number(e.target.value) })}
                     className={inputCls}
                   />
+                  )}
                 </Campo>
               ))}
             </div>
