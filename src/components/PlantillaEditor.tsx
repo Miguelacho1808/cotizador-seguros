@@ -85,7 +85,7 @@ export default function PlantillaEditor({ plantilla, onVolver }: { plantilla: Pl
         asunto,
         cuerpo,
         bloques: codigo === null ? bloques : null,
-        html,
+        html: codigo === null ? null : html,
         updated_at: new Date().toISOString(),
       })
       .eq("id", plantilla.id);

@@ -104,8 +104,10 @@ ${filas}
 </table></div>`;
 }
 
+// Con bloques, el HTML se genera siempre al momento (así los ajustes de diseño llegan a las plantillas ya guardadas);
+// solo las plantillas editadas como código usan el HTML guardado.
 export const htmlDePlantilla = (p: Pick<Plantilla, "html" | "bloques">) =>
-  p.html ?? bloquesAHtml(p.bloques ?? bloquesPorDefecto());
+  p.bloques ? bloquesAHtml(p.bloques) : (p.html ?? bloquesAHtml(bloquesPorDefecto()));
 
 export const VARIABLES: [string, string][] = [
   ["{{org_nombre}}", "Nombre de la empresa"],
