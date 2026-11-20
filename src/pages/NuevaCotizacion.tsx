@@ -487,7 +487,7 @@ export default function NuevaCotizacion() {
                 >
                   {hecho ? "✓" : n}
                 </span>
-                <span className={n === paso ? "text-zinc-100" : "text-zinc-500"}>{nombre}</span>
+                <span className={n === paso ? "text-zinc-100" : "hidden text-zinc-500 sm:inline"}>{nombre}</span>
               </li>
             );
           })}

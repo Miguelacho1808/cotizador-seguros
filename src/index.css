@@ -10,6 +10,17 @@ body {
   color: #f4f4f5;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  overflow-x: clip;
+}
+
+/* iOS Safari hace zoom al enfocar campos con texto menor a 16px */
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* Tema claro del panel: se invierte la escala zinc y se oscurecen los acentos.

@@ -524,7 +524,7 @@ export default function Tarifario() {
       {edit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEdit(null)}>
           <div
-            className="w-full max-w-md space-y-4 rounded-2xl border border-zinc-700 bg-zinc-900 p-5"
+            className="max-h-[90vh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-900 p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div>
