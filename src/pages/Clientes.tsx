@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { telefonoWhatsApp } from "../lib/telefono";
 import Avatar from "../components/Avatar";
+import { descargarExcel, descargarPdf, type ClienteExport } from "../lib/exportarClientes";
 
 type Fila = {
   id: string;
@@ -81,6 +82,47 @@ export default function Clientes() {
     };
   }, [q, limite]);
 
+  const [menu, setMenu] = useState(false);
+  const [exportando, setExportando] = useState(false);
+
+  /** Trae todos los clientes que coinciden con la búsqueda (no solo los 100 visibles). */
+  const exportar = async (formato: "excel" | "pdf") => {
+    setMenu(false);
+    const ventana = formato === "pdf" ? window.open("", "_blank") : null;
+    if (formato === "pdf" && !ventana) {
+      setError("El navegador bloqueó la ventana del PDF. Permite ventanas emergentes e inténtalo de nuevo.");
+      return;
+    }
+    setExportando(true);
+    try {
+      const txt = q.trim().replace(/[%,()]/g, " ").trim();
+      const todos: ClienteExport[] = [];
+      for (let desde = 0; ; desde += 1000) {
+        let c = supabase
+          .from("clientes")
+          .select("nombre,apellido,cedula,telefono,email,created_at,perfiles(nombre,apellido),cotizaciones(count)")
+          .order("created_at", { ascending: false })
+          .range(desde, desde + 999);
+        if (txt)
+          c = c.or(
+            `nombre.ilike.%${txt}%,apellido.ilike.%${txt}%,cedula.ilike.%${txt}%,telefono.ilike.%${txt}%,email.ilike.%${txt}%`,
+          );
+        const r = await c;
+        if (r.error) throw new Error(r.error.message);
+        const lote = (r.data as unknown as ClienteExport[]) ?? [];
+        todos.push(...lote);
+        if (lote.length < 1000) break;
+      }
+      if (formato === "excel") descargarExcel(todos);
+      else if (ventana) descargarPdf(todos, ventana);
+    } catch (e) {
+      ventana?.close();
+      setError(e instanceof Error ? e.message : "No se pudo descargar la lista.");
+    } finally {
+      setExportando(false);
+    }
+  };
+
   const varia = kpi && kpi.ant > 0 ? Math.round(((kpi.mes - kpi.ant) / kpi.ant) * 100) : null;
   const tarjeta = "rounded-xl border border-zinc-800 bg-zinc-900 p-4";
   const rotulo = "text-[11px] font-semibold uppercase tracking-wider text-zinc-400";
@@ -93,12 +135,41 @@ export default function Clientes() {
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Operación</p>
           <h1 className="text-4xl font-extrabold">Clientes</h1>
         </div>
-        <Link
-          to="/clientes/nuevo"
-          className="rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-white"
-        >
-          + Nuevo cliente
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <button
+              onClick={() => setMenu(!menu)}
+              disabled={exportando}
+              aria-haspopup="menu"
+              aria-expanded={menu}
+              className="rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-semibold hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {exportando ? "Preparando…" : "⬇ Descargar clientes ▾"}
+            </button>
+            {menu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenu(false)} aria-hidden />
+                <div
+                  role="menu"
+                  className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl"
+                >
+                  <button role="menuitem" onClick={() => exportar("excel")} className="block w-full px-4 py-2.5 text-left text-sm hover:bg-zinc-800">
+                    📊 Excel (.xlsx)
+                  </button>
+                  <button role="menuitem" onClick={() => exportar("pdf")} className="block w-full border-t border-zinc-800 px-4 py-2.5 text-left text-sm hover:bg-zinc-800">
+                    📄 PDF
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          <Link
+            to="/clientes/nuevo"
+            className="rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-white"
+          >
+            + Nuevo cliente
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
