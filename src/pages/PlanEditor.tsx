@@ -132,9 +132,8 @@ export default function PlanEditor() {
     setBen(estados);
     setOcultos(ocul);
 
-    // Columnas de add-ons en la tabla de tarifas: los habilitados en el plan + los que ya tienen valores
+    // Columnas de add-ons en la tabla de tarifas: solo los habilitados en el plan
     const usados = new Set<string>(pAddons.map((x) => x.addon_id));
-    for (const t of listaTarifas) for (const x of t.tarifa_addons) usados.add(x.addon_id);
     setColsIds(listaAddons.filter((a) => usados.has(a.id)).map((a) => a.id));
     setCargado(true);
   }, [id]);
