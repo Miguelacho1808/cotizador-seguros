@@ -25,7 +25,7 @@ type Filtros = { aseg: string; tipo: string; plan: string; cob: string; edad: st
 
 const SELECT =
   "id,cobertura_monto,edad_min,edad_max,prima_base,deducible,tamano_grupo,activa,planes!inner(nombre,tipo,aseguradora_id,aseguradoras(nombre)),tarifa_addons(incluido,costo,valor_original,addons(nombre,orden))";
-const TAMANOS = [10, 25, 50, 100];
+const TAMANOS = [10, 20, 50, 100, 0]; // 0 = Todas
 const dinero = (n: number) => `$${Number(n).toLocaleString("es-VE")}`;
 const vacio: Filtros = { aseg: "", tipo: "", plan: "", cob: "", edad: "", ded: "" };
 
@@ -78,18 +78,26 @@ export default function Tarifario() {
   );
 
   const cargar = useCallback(async () => {
-    const desde = pagina * porPagina;
-    const res = await consulta(SELECT, true)
-      .order("cobertura_monto")
-      .order("edad_min")
-      .order("id")
-      .range(desde, desde + porPagina - 1);
+    const pedir = (desde: number, hasta: number) =>
+      consulta(SELECT, true).order("cobertura_monto").order("edad_min").order("id").range(desde, hasta);
+    let res = await pedir(porPagina === 0 ? 0 : pagina * porPagina, porPagina === 0 ? 999 : pagina * porPagina + porPagina - 1);
     if (res.error) {
       setMsg({ tipo: "error", texto: res.error.message });
       return;
     }
-    setFilas((res.data as unknown as FilaTarifa[]) ?? []);
-    setTotal(res.count ?? 0);
+    let datos = (res.data as unknown as FilaTarifa[]) ?? [];
+    const cuenta = res.count ?? 0;
+    // "Todas": el servidor entrega máx. 1.000 filas por consulta, se piden en lotes
+    for (let desde = 1000; porPagina === 0 && desde < cuenta; desde += 1000) {
+      res = await pedir(desde, desde + 999);
+      if (res.error) {
+        setMsg({ tipo: "error", texto: res.error.message });
+        return;
+      }
+      datos = datos.concat((res.data as unknown as FilaTarifa[]) ?? []);
+    }
+    setFilas(datos);
+    setTotal(cuenta);
     setSel(new Set());
   }, [consulta, pagina, porPagina]);
 
@@ -223,7 +231,7 @@ export default function Tarifario() {
     }
   };
 
-  const paginas = total ? Math.ceil(total / porPagina) : 1;
+  const paginas = total && porPagina > 0 ? Math.ceil(total / porPagina) : 1;
   const ini = Math.max(0, Math.min(pagina - 4, paginas - 10));
   const numeros = Array.from({ length: Math.min(10, paginas) }, (_, i) => ini + i);
   const todasSel = filas.length > 0 && filas.every((x) => sel.has(x.id));
@@ -478,7 +486,7 @@ export default function Tarifario() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
         <span>
-          Página {pagina + 1} de {paginas} · {(total ?? 0).toLocaleString("es-VE")} registros
+          {porPagina === 0 ? "Mostrando todos" : `Página ${pagina + 1} de ${paginas}`} · {(total ?? 0).toLocaleString("es-VE")} registros
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           <select
@@ -491,10 +499,12 @@ export default function Tarifario() {
           >
             {TAMANOS.map((n) => (
               <option key={n} value={n}>
-                {n} / página
+                {n === 0 ? "Todas" : `${n} / página`}
               </option>
             ))}
           </select>
+          {porPagina > 0 && (
+            <>
           <button
             onClick={() => setPagina((p) => Math.max(0, p - 1))}
             disabled={pagina === 0}
@@ -518,6 +528,8 @@ export default function Tarifario() {
           >
             Siguiente →
           </button>
+            </>
+          )}
         </div>
       </div>
 
