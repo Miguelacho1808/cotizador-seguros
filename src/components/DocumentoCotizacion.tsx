@@ -155,6 +155,9 @@ function Bloque({ g, repetida }: { g: Grupo; repetida: boolean }) {
 function sumaPersonas(p: PlanDoc): number | null {
   const x = p.desglose?.porPersona;
   if (!x || x.length === 0) return p.prima_anual;
+  // En planes por grupo, porPersona tiene base === null y representa a los integrantes,
+  // pero la prima ya está guardada como prima total del grupo en p.prima_anual.
+  if (x.every((y) => y.base === null)) return p.prima_anual;
   return x.reduce((s, y) => s + (y.base ?? 0) + y.addons, 0);
 }
 
